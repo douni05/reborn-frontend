@@ -35,11 +35,11 @@
 ## 🛠 Tech Stack
 
 | 구분 | 기술 스택                                  |
-| :--- | :--- |
+| :--- |:---------------------------------------|
 | **Frontend** | Flutter (Dart), Android Studio         |
 | **Backend** | Spring Boot, Java 21, Spring Data JPA  |
 | **AI Engine** | FastAPI (Python), Gemini 1.5 Flash API |
-| **Database** | MySQL 8.0                              |
+| **Database** | Supabase DB (PostgreSQL)               |
 | **Infrastructure** | AWS S3 (Image Storage)                 |
 
 ---
