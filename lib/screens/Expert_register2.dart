@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/bottom_nav_bar.dart';
 import 'Expert_register1.dart';
 import 'Expert_register3.dart';
 
@@ -174,7 +175,7 @@ class ExpertRegister2Screen extends StatelessWidget {
                 ),
               ),
             ),
-            const _RegisterBottomNav(),
+            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),
@@ -214,87 +215,3 @@ class ExpertRegister2Screen extends StatelessWidget {
   }
 }
 
-class _RegisterBottomNav extends StatelessWidget {
-  const _RegisterBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 78,
-      width: double.infinity,
-      color: const Color(0xFFD9EACD),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
-              _BottomNavItem(icon: Icons.home_outlined, label: '홈'),
-              _BottomNavItem(icon: Icons.build_outlined, label: '리폼하기'),
-              SizedBox(width: 60),
-              _BottomNavItem(icon: Icons.article_outlined, label: '전문가연결'),
-              _BottomNavItem(icon: Icons.person_outline, label: '마이페이지'),
-            ],
-          ),
-          Positioned(
-            top: -8,
-            child: Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                color: const Color(0xFFA8C88E),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFD9EACD),
-                  width: 6,
-                ),
-              ),
-              child: const Icon(
-                Icons.recycling,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 58,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 24,
-            color: const Color(0xFF1F402C),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'RebornFont',
-              fontSize: 11,
-              color: Color(0xFF1F402C),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}

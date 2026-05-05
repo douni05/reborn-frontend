@@ -213,7 +213,7 @@ class ReformSolutionScreen extends StatelessWidget {
               ),
             ),
             Container(
-              height: 34,
+              height: MediaQuery.of(context).padding.bottom,
               color: const Color(0xFFF8FAED),
             ),
           ],
