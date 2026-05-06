@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'Main_page.dart';
+import '../services/api_service.dart';
+import '../core/user_session.dart';
 
 class SignupNameScreen extends StatefulWidget {  // StatefulWidget으로 변경
   const SignupNameScreen({super.key});
@@ -17,7 +19,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
     super.dispose();
   }
 
-  void _goToMain() {
+  Future<void> _goToMain() async {
     final nickname = _nicknameController.text.trim();
     if (nickname.length < 2 || nickname.length > 8) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -25,12 +27,30 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
       );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainPageScreen(nickname: nickname),
-      ),
-    );
+
+    try {
+      final result = await ApiService().join(nickname);
+      // 서버에서 받은 userId 저장
+      UserSession.init(result['userId'], result['nickname']);
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainPageScreen(),
+        ),
+      );
+    } catch (e) {
+      // 서버 꺼져있어도 로컬로 진행
+      UserSession.init(1, nickname);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainPageScreen(),
+        ),
+      );
+    }
   }
 
   @override

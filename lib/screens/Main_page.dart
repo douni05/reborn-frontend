@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import '../core/user_session.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class MainPageScreen extends StatelessWidget {
-  final String nickname;
-
-  const MainPageScreen({super.key, required this.nickname});
+  const MainPageScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final nickname = UserSession.nickname;
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
       body: SafeArea(
@@ -218,7 +218,7 @@ class MainPageScreen extends StatelessWidget {
                 ),
               ),
             ),
-            BottomNavBar(selectedIndex: 0, nickname: nickname),
+            const BottomNavBar(selectedIndex: 0),
           ],
         ),
       ),

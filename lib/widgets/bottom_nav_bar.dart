@@ -10,9 +10,8 @@ import '../screens/camera_screen.dart';
 /// [selectedIndex] 0=홈, 1=리폼하기, 2=중앙버튼, 3=전문가연결, 4=마이페이지
 class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
-  final String nickname;
 
-  const BottomNavBar({super.key, this.selectedIndex = 0, this.nickname = ''});
+  const BottomNavBar({super.key, this.selectedIndex = 0});
 
   void _onItemTapped(BuildContext context, int index) {
     if (index == selectedIndex) return;
@@ -20,7 +19,7 @@ class BottomNavBar extends StatelessWidget {
     Widget page;
     switch (index) {
       case 0:
-        page = MainPageScreen(nickname: nickname);
+        page = const MainPageScreen();
         break;
       case 1:
         page = const ReformHistoryScreen();
