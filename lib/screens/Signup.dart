@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../services/member_service.dart';
 import 'Main_page.dart';
 
-class SignupNameScreen extends StatefulWidget {  // StatefulWidget으로 변경
+class SignupNameScreen extends StatefulWidget {
   const SignupNameScreen({super.key});
 
   @override
@@ -10,6 +11,8 @@ class SignupNameScreen extends StatefulWidget {  // StatefulWidget으로 변경
 
 class _SignupNameScreenState extends State<SignupNameScreen> {
   final TextEditingController _nicknameController = TextEditingController();
+  final MemberService _memberService = MemberService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -17,7 +20,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
     super.dispose();
   }
 
-  void _goToMain() {
+  Future<void> _goToMain() async {
     final nickname = _nicknameController.text.trim();
     if (nickname.length < 2 || nickname.length > 8) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -25,12 +28,35 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
       );
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainPageScreen(nickname: nickname),
-      ),
-    );
+
+    setState(() => _isLoading = true);
+    try {
+      final result = await _memberService.join(
+        email: '${nickname}_user@reborn.app',
+        nickname: nickname,
+        role: 'USER',
+      );
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MainPageScreen(
+            nickname: result.nickname,
+            totalXp: result.totalXp,
+            currentLevel: result.currentLevel,
+          ),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류가 발생했습니다: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -89,7 +115,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: _goToMain,  // 닉네임 검증 후 이동
+                  onPressed: _isLoading ? null : _goToMain,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF86A874),
                     foregroundColor: Colors.white,
@@ -98,13 +124,22 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    '완료',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          '완료',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],
