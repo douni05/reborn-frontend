@@ -15,6 +15,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
   final TextEditingController _nicknameController = TextEditingController();
   final MemberService _memberService = MemberService();
   bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -25,13 +26,14 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
   Future<void> _goToMain() async {
     final nickname = _nicknameController.text.trim();
     if (nickname.length < 2 || nickname.length > 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('닉네임은 2자 이상 8자 이하로 입력해주세요')),
-      );
+      setState(() => _errorMessage = '닉네임은 2자 이상 8자 이하로 입력해주세요');
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       await _memberService.join(
         email: widget.email ?? '${nickname}_user@reborn.app',
@@ -47,9 +49,10 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류가 발생했습니다: $e')),
-      );
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -81,7 +84,9 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   border: Border.all(
-                    color: const Color(0xFF4A5A4D),
+                    color: _errorMessage != null
+                        ? Colors.red
+                        : const Color(0xFF4A5A4D),
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(14),
@@ -91,6 +96,11 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                 child: TextField(
                   controller: _nicknameController,
                   keyboardType: TextInputType.text,
+                  onChanged: (_) {
+                    if (_errorMessage != null) {
+                      setState(() => _errorMessage = null);
+                    }
+                  },
                   decoration: const InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
@@ -106,6 +116,19 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                   ),
                 ),
               ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
