@@ -134,7 +134,6 @@ class _CameraScreenState extends State<CameraScreen> {
             detectedLabel: bestLabel,
             confidence: confidence,
             imagePath: photo.path,
-            userId: 1, // TODO: 로그인 구현 후 실제 userId로 교체
           ),
 
         ),
