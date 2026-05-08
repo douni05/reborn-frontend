@@ -27,7 +27,39 @@ class MemberService {
 
       return result;
     } on DioException catch (e) {
-      throw Exception('회원가입 실패: ${e.message}');
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? '회원가입 중 오류가 발생했습니다');
+    }
+  }
+
+  Future<void> updateNickname(String nickname) async {
+    try {
+      await _dio.patch(
+        '/api/v1/members/nickname',
+        data: {'nickname': nickname},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? '닉네임 변경 중 오류가 발생했습니다');
+    }
+  }
+
+  Future<void> withdraw() async {
+    try {
+      await _dio.delete('/api/v1/members/me');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? '탈퇴 중 오류가 발생했습니다');
+    }
+  }
+
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      await _dio.get('/api/v1/members/check-email', queryParameters: {'email': email});
+      return true;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return false;
+      rethrow;
     }
   }
 
