@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import '../services/member_service.dart';
 import 'Main_page.dart';
-import '../services/api_service.dart';
-import '../core/user_session.dart';
 
-class SignupNameScreen extends StatefulWidget {  // StatefulWidget으로 변경
+class SignupNameScreen extends StatefulWidget {
   const SignupNameScreen({super.key});
 
   @override
@@ -12,6 +11,8 @@ class SignupNameScreen extends StatefulWidget {  // StatefulWidget으로 변경
 
 class _SignupNameScreenState extends State<SignupNameScreen> {
   final TextEditingController _nicknameController = TextEditingController();
+  final MemberService _memberService = MemberService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,28 +29,27 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
     try {
-      final result = await ApiService().join(nickname);
-      // 서버에서 받은 userId 저장
-      UserSession.init(result['userId'], result['nickname']);
+      await _memberService.join(
+        email: '${nickname}_user@reborn.app',
+        nickname: nickname,
+        role: 'USER',
+      );
 
       if (!mounted) return;
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const MainPageScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const MainPageScreen()),
+        (route) => false,
       );
     } catch (e) {
-      // 서버 꺼져있어도 로컬로 진행
-      UserSession.init(1, nickname);
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const MainPageScreen(),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류가 발생했습니다: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -109,7 +109,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: _goToMain,  // 닉네임 검증 후 이동
+                  onPressed: _isLoading ? null : _goToMain,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF86A874),
                     foregroundColor: Colors.white,
@@ -118,13 +118,22 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    '완료',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          '완료',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],
