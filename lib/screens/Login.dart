@@ -1,14 +1,149 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'Signup.dart';
+import 'Main_page.dart';
+import '../services/member_service.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
-  void _goToSignup(BuildContext context) {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final MemberService _memberService = MemberService();
+
+  void _goToSignup(BuildContext context, {String? email}) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const SignupNameScreen()),
+      MaterialPageRoute(builder: (context) => SignupNameScreen(email: email)),
+    );
+  }
+
+  void _goToMain(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const MainPageScreen()),
+      (route) => false,
+    );
+  }
+
+  void _showGoogleEmailInput(BuildContext context) {
+    final controller = TextEditingController();
+    bool isLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFFF8FAED),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 28,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '이메일로 계속하기',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF223B2B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.emailAddress,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'example@gmail.com',
+                  hintStyle: const TextStyle(color: Color(0xFF8A8A8A)),
+                  filled: true,
+                  fillColor: const Color(0xFFF5F5F5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF4A5A4D)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF4A5A4D)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final email = controller.text.trim();
+                          if (!email.contains('@')) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('올바른 이메일을 입력해주세요')),
+                            );
+                            return;
+                          }
+                          setModalState(() => isLoading = true);
+                          try {
+                            final exists = await _memberService.checkEmailExists(email);
+                            if (!context.mounted) return;
+                            Navigator.pop(ctx);
+                            if (exists) {
+                              await _memberService.join(
+                                email: email,
+                                nickname: '',
+                                role: 'USER',
+                              );
+                              if (context.mounted) _goToMain(context);
+                            } else {
+                              _goToSignup(context, email: email);
+                            }
+                          } catch (e) {
+                            setModalState(() => isLoading = false);
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('오류가 발생했습니다: $e')),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF86A874),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          '계속',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -82,7 +217,7 @@ class LoginScreen extends StatelessWidget {
                     text: '구글로 로그인',
                     textColor: const Color(0xFF7B7A7C),
                     iconPath: 'assets/icons/ic_google.png',
-                    onTap: () => _goToSignup(context),
+                    onTap: () => _showGoogleEmailInput(context),
                   ),
                   SizedBox(height: h * 0.024),
                   _LoginButton(

@@ -3,7 +3,9 @@ import '../services/member_service.dart';
 import 'Main_page.dart';
 
 class SignupNameScreen extends StatefulWidget {
-  const SignupNameScreen({super.key});
+  final String? email;
+
+  const SignupNameScreen({super.key, this.email});
 
   @override
   State<SignupNameScreen> createState() => _SignupNameScreenState();
@@ -32,7 +34,7 @@ class _SignupNameScreenState extends State<SignupNameScreen> {
     setState(() => _isLoading = true);
     try {
       await _memberService.join(
-        email: '${nickname}_user@reborn.app',
+        email: widget.email ?? '${nickname}_user@reborn.app',
         nickname: nickname,
         role: 'USER',
       );

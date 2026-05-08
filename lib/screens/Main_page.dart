@@ -1,9 +1,230 @@
 import 'package:flutter/material.dart';
+import '../core/network/api_client.dart';
 import '../core/storage/auth_storage.dart';
 import '../widgets/bottom_nav_bar.dart';
 
-class MainPageScreen extends StatelessWidget {
+const List<int> _levelThresholds = [
+  0, 50, 110, 180, 260, 360, 470, 590, 720, 870,
+  1000, 1150, 1350, 1500, 1700, 1950, 2150, 2350, 2550, 2750,
+  2950, 3150, 3350, 3550, 3750, 3950, 4150, 4350, 4500, 5000,
+  5600, 5800, 6000, 6200, 6400, 6600, 6800, 7000, 7200, 7400,
+  7600, 7800, 8000, 8200, 8400, 8600, 8800, 9000, 9200, 10000,
+];
+
+String _getTitleForLevel(int level) {
+  if (level >= 50) return '지구 수호자';
+  if (level >= 31) return '에코 마스터';
+  if (level >= 16) return '프로 환경러';
+  if (level >= 6) return '주니어 리포머';
+  return '새싹 지구 지킴이';
+}
+
+String _getTitleEmoji(String title) {
+  switch (title) {
+    case '주니어 리포머':   return '♻️';
+    case '프로 환경러':     return '🌿';
+    case '에코 마스터':     return '🌍';
+    case '지구 수호자':     return '🏆';
+    case '맥가이버':        return '⚒️';
+    case '패션 아이콘':     return '🏆';
+    case '공방 단골손님':   return '🤝';
+    case '분리배출의 신':   return '📍';
+    default:               return '🌱';
+  }
+}
+
+void _showGamificationSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFFF8FAED),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      minChildSize: 0.4,
+      builder: (_, controller) => SingleChildScrollView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCCCCC),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '레벨 & 보상 안내',
+              style: TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 22,
+                color: Color(0xFF1F402C),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'XP 획득 방법',
+              style: TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 15,
+                color: Color(0xFF1F402C),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _xpRow('AI 분석', '10 XP', sub: '첫 분석은 50 XP'),
+            _xpRow('리폼 등록', '100 XP'),
+            _xpRow('폐기물 처리', '50 XP'),
+            _xpRow('전문가 매칭', '150 XP'),
+            const SizedBox(height: 24),
+            const Text(
+              '칭호 획득 조건',
+              style: TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 15,
+                color: Color(0xFF1F402C),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _titleRow('🌱', 'Lv.1', '새싹 지구 지킴이'),
+            _titleRow('♻️', 'Lv.6', '주니어 리포머'),
+            _titleRow('🌿', 'Lv.16', '프로 환경러'),
+            _titleRow('🌍', 'Lv.31', '에코 마스터'),
+            _titleRow('🏆', 'Lv.50', '지구 수호자'),
+            const SizedBox(height: 16),
+            const Text(
+              '특별 칭호',
+              style: TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 15,
+                color: Color(0xFF1F402C),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _titleRow('⚒️', '리폼 5회', '맥가이버'),
+            _titleRow('🏆', '리폼 10회', '패션 아이콘'),
+            _titleRow('🤝', '전문가 매칭 3회', '공방 단골손님'),
+            _titleRow('📍', '폐기물 처리 5회', '분리배출의 신'),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _xpRow(String action, String xp, {String? sub}) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              action,
+              style: const TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 14,
+                color: Color(0xFF1F402C),
+              ),
+            ),
+            if (sub != null)
+              Text(
+                sub,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF8A8A8A),
+                ),
+              ),
+          ],
+        ),
+        Text(
+          xp,
+          style: const TextStyle(
+            fontFamily: 'RebornFont',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF173C2A),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _titleRow(String icon, String condition, String title) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 14,
+              color: Color(0xFF1F402C),
+            ),
+          ),
+        ),
+        Text(
+          condition,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF8A8A8A),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class MainPageScreen extends StatefulWidget {
   const MainPageScreen({super.key});
+
+  @override
+  State<MainPageScreen> createState() => _MainPageScreenState();
+}
+
+class _MainPageScreenState extends State<MainPageScreen> {
+  String? _tip;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTip();
+  }
+
+  Future<void> _loadTip() async {
+    try {
+      final dio = ApiClient().dio;
+      final response = await dio.get('/api/v1/tips/today');
+      if (!mounted) return;
+      setState(() => _tip = response.data['tip'] as String?);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,13 +233,11 @@ class MainPageScreen extends StatelessWidget {
     final totalXp = storage.totalXp;
     final currentLevel = storage.currentLevel;
 
-    final xpForNextLevel = currentLevel * 200;
-    final xpProgress = ((totalXp % xpForNextLevel) / xpForNextLevel).clamp(0.0, 1.0);
-    final titleName = currentLevel >= 10
-        ? '지구 수호자'
-        : currentLevel >= 5
-            ? '환경 지킴이'
-            : '새싹 지구 지킴이';
+    final idx = (currentLevel - 1).clamp(0, _levelThresholds.length - 2);
+    final xpInLevel = totalXp - _levelThresholds[idx];
+    final xpNeeded = _levelThresholds[idx + 1] - _levelThresholds[idx];
+    final xpProgress = (xpInLevel / xpNeeded).clamp(0.0, 1.0);
+    final titleName = _getTitleForLevel(currentLevel);
 
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
@@ -66,10 +285,9 @@ class MainPageScreen extends StatelessWidget {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.star,
-                                  size: 16,
-                                  color: Color(0xFF223B2B),
+                                Text(
+                                  _getTitleEmoji(titleName),
+                                  style: const TextStyle(fontSize: 16),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -83,49 +301,66 @@ class MainPageScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Level $currentLevel',
-                                  style: const TextStyle(
-                                    fontFamily: 'RebornFont',
-                                    fontSize: 12,
-                                    color: Color(0xFF223B2B),
+                            GestureDetector(
+                              onTap: () => _showGamificationSheet(context),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Level $currentLevel',
+                                        style: const TextStyle(
+                                          fontFamily: 'RebornFont',
+                                          fontSize: 12,
+                                          color: Color(0xFF223B2B),
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '$xpInLevel / $xpNeeded XP',
+                                            style: const TextStyle(
+                                              fontFamily: 'RebornFont',
+                                              fontSize: 12,
+                                              color: Color(0xFF223B2B),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.info_outline,
+                                            size: 14,
+                                            color: Color(0xFF8A8A8A),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                Text(
-                                  '$totalXp/$xpForNextLevel XP',
-                                  style: const TextStyle(
-                                    fontFamily: 'RebornFont',
-                                    fontSize: 12,
-                                    color: Color(0xFF223B2B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                width: double.infinity,
-                                height: 20,
-                                color: const Color(0xFFE6E8E9),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: FractionallySizedBox(
-                                    widthFactor: xpProgress,
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
                                     child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF173C2A),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: Radius.circular(8),
-                                          bottomLeft: Radius.circular(8),
+                                      width: double.infinity,
+                                      height: 20,
+                                      color: const Color(0xFFE6E8E9),
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: FractionallySizedBox(
+                                          widthFactor: xpProgress,
+                                          child: Container(
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF173C2A),
+                                              borderRadius: BorderRadius.only(
+                                                topRight: Radius.circular(8),
+                                                bottomRight: Radius.circular(8),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ],
@@ -142,10 +377,10 @@ class MainPageScreen extends StatelessWidget {
                           color: const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               '오늘의 실천 Tip!',
                               style: TextStyle(
                                 fontFamily: 'RebornFont',
@@ -153,16 +388,30 @@ class MainPageScreen extends StatelessWidget {
                                 color: Color(0xFF223B2B),
                               ),
                             ),
-                            SizedBox(height: 6),
-                            Text(
-                              '솜이불은 헌 옷 수거함에 버리면 안돼요!\n종량제 봉투 or 대형 폐기물',
-                              style: TextStyle(
-                                fontFamily: 'RebornFont',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF223B2B),
-                              ),
-                            ),
+                            const SizedBox(height: 6),
+                            _tip == null
+                                ? const SizedBox(
+                                    height: 20,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF173C2A),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    _tip!,
+                                    style: const TextStyle(
+                                      fontFamily: 'RebornFont',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF223B2B),
+                                    ),
+                                  ),
                           ],
                         ),
                       ),
