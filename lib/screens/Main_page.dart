@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/user_session.dart';
+import '../core/storage/auth_storage.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class MainPageScreen extends StatelessWidget {
@@ -7,7 +7,19 @@ class MainPageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nickname = UserSession.nickname;
+    final storage = AuthStorage();
+    final nickname = storage.nickname ?? '';
+    final totalXp = storage.totalXp;
+    final currentLevel = storage.currentLevel;
+
+    final xpForNextLevel = currentLevel * 200;
+    final xpProgress = ((totalXp % xpForNextLevel) / xpForNextLevel).clamp(0.0, 1.0);
+    final titleName = currentLevel >= 10
+        ? '지구 수호자'
+        : currentLevel >= 5
+            ? '환경 지킴이'
+            : '새싹 지구 지킴이';
+
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
       body: SafeArea(
@@ -52,17 +64,17 @@ class MainPageScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Row(
+                            Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.star,
                                   size: 16,
                                   color: Color(0xFF223B2B),
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
-                                  '새싹 지구 지킴이',
-                                  style: TextStyle(
+                                  titleName,
+                                  style: const TextStyle(
                                     fontFamily: 'RebornFont',
                                     fontSize: 16,
                                     color: Color(0xFF223B2B),
@@ -71,20 +83,20 @@ class MainPageScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            const Row(
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Level 1',
-                                  style: TextStyle(
+                                  'Level $currentLevel',
+                                  style: const TextStyle(
                                     fontFamily: 'RebornFont',
                                     fontSize: 12,
                                     color: Color(0xFF223B2B),
                                   ),
                                 ),
                                 Text(
-                                  '1/200',
-                                  style: TextStyle(
+                                  '$totalXp/$xpForNextLevel XP',
+                                  style: const TextStyle(
                                     fontFamily: 'RebornFont',
                                     fontSize: 12,
                                     color: Color(0xFF223B2B),
@@ -102,7 +114,7 @@ class MainPageScreen extends StatelessWidget {
                                 child: Align(
                                   alignment: Alignment.centerLeft,
                                   child: FractionallySizedBox(
-                                    widthFactor: 1 / 200,
+                                    widthFactor: xpProgress,
                                     child: Container(
                                       decoration: const BoxDecoration(
                                         color: Color(0xFF173C2A),
