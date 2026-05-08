@@ -93,6 +93,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (dialogContext) {
         bool isSaving = false;
+        String? errorMessage;
 
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) => Dialog(
@@ -124,14 +125,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       fontSize: 15,
                       color: Color(0xFF1F402C),
                     ),
+                    onChanged: (_) {
+                      if (errorMessage != null) {
+                        setDialogState(() => errorMessage = null);
+                      }
+                    },
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: errorMessage != null ? Colors.red : Colors.transparent,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: errorMessage != null ? Colors.red : Colors.transparent,
+                        ),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
+                      errorText: errorMessage,
+                      errorStyle: const TextStyle(fontSize: 12),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -143,6 +163,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               ? null
                               : () async {
                                   final newName = controller.text.trim();
+                                  if (newName.length < 2 || newName.length > 8) {
+                                    setDialogState(() => errorMessage = '닉네임은 2자 이상 8자 이하로 입력해주세요');
+                                    return;
+                                  }
                                   setDialogState(() => isSaving = true);
                                   try {
                                     await _memberService.updateNickname(newName);
@@ -152,11 +176,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     setState(() => _nickname = newName);
                                     Navigator.pop(dialogContext);
                                   } catch (e) {
-                                    setDialogState(() => isSaving = false);
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-                                    );
+                                    setDialogState(() {
+                                      isSaving = false;
+                                      errorMessage = e.toString().replaceFirst('Exception: ', '');
+                                    });
                                   }
                                 },
                           child: Container(
