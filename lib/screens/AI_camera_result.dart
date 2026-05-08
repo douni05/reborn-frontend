@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/analysis_service.dart';
+import '../models/analysis_model.dart';
 import 'Reform_solution.dart';
 import 'dart:io';
 
@@ -7,14 +8,12 @@ class AICameraResultScreen extends StatefulWidget {
   final String detectedLabel;
   final double confidence;
   final String imagePath;
-  final int userId;
 
   const AICameraResultScreen({
     super.key,
     required this.detectedLabel,
     required this.confidence,
     required this.imagePath,
-    this.userId = 1,
   });
 
   @override
@@ -37,7 +36,6 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
     try {
       final result = await _service.analyze(
         label: widget.detectedLabel,
-        userId: widget.userId,
       );
       setState(() {
         _result = result;
