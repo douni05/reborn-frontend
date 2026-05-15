@@ -1,18 +1,42 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
-import 'Expert_register2.dart';
+import '../services/expert_service.dart';
+import 'Expert_connect.dart';
 
 class ExpertRegister3Screen extends StatefulWidget {
-  const ExpertRegister3Screen({super.key});
+  final String shopName;
+  final String businessNumber;
+  final String ownerName;
+  final String phone;
+  final String address;
+  final String detailAddress;
+  final File? imageFile;
+
+  const ExpertRegister3Screen({
+    super.key,
+    required this.shopName,
+    required this.businessNumber,
+    required this.ownerName,
+    required this.phone,
+    required this.address,
+    required this.detailAddress,
+    this.imageFile,
+  });
 
   @override
   State<ExpertRegister3Screen> createState() => _ExpertRegister3ScreenState();
 }
 
 class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
-  String selectedField = '의류';
+  final _introductionController = TextEditingController();
+  final _expertService = ExpertService();
 
-  final List<String> fields = [
+  String _selectedCategory = '의류';
+  String? _introductionError;
+  bool _isLoading = false;
+
+  final List<String> _categories = [
     '의류',
     '목재/가구',
     '금속',
@@ -22,6 +46,103 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
     '전자제품',
     '기타',
   ];
+
+  @override
+  void dispose() {
+    _introductionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    setState(() {
+      _introductionError = _introductionController.text.trim().isEmpty
+          ? '소개글을 입력해주세요'
+          : null;
+    });
+
+    if (_introductionError != null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 이미지 있으면 Supabase Storage에 업로드
+      String? imageUrl;
+      if (widget.imageFile != null) {
+        imageUrl = await _expertService.uploadImage(widget.imageFile!);
+      }
+
+      await _expertService.register(
+        shopName: widget.shopName,
+        businessNumber: widget.businessNumber,
+        ownerName: widget.ownerName,
+        phone: widget.phone,
+        address: widget.address,
+        detailAddress: widget.detailAddress,
+        category: _selectedCategory,
+        introduction: _introductionController.text.trim(),
+        imageUrl: imageUrl,
+      );
+
+      if (!mounted) return;
+
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFFF8FAED),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            '등록 완료 🎉',
+            style: TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 22,
+              color: Color(0xFF1F402C),
+            ),
+          ),
+          content: const Text(
+            '전문가로 등록되었어요!\n이제 고객과 연결될 수 있어요.',
+            style: TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 15,
+              color: Color(0xFF33543C),
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExpertConnectScreen()),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                '확인',
+                style: TextStyle(
+                  fontFamily: 'RebornFont',
+                  fontSize: 16,
+                  color: Color(0xFF87A676),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: const TextStyle(fontFamily: 'RebornFont')),
+          backgroundColor: const Color(0xFF5C3D2E),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +195,7 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                     children: [
                       const Row(
                         children: [
-                          Text(
-                            '🎯',
-                            style: TextStyle(fontSize: 20),
-                          ),
+                          Text('🎯', style: TextStyle(fontSize: 20)),
                           SizedBox(width: 8),
                           Text(
                             '전문 분야',
@@ -102,24 +220,19 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: fields.length,
+                        itemCount: _categories.length,
                         gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           mainAxisSpacing: 10,
                           crossAxisSpacing: 10,
                           childAspectRatio: 2.55,
                         ),
                         itemBuilder: (context, index) {
-                          final field = fields[index];
-                          final isSelected = selectedField == field;
-
+                          final cat = _categories[index];
+                          final isSelected = _selectedCategory == cat;
                           return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedField = field;
-                              });
-                            },
+                            onTap: () => setState(() => _selectedCategory = cat),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isSelected
@@ -133,7 +246,7 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                field,
+                                cat,
                                 style: TextStyle(
                                   fontFamily: 'RebornFont',
                                   fontSize: 17,
@@ -167,22 +280,26 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                           color: const Color(0xFFF7F7F7),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: const Color(0xFF5C775E),
+                            color: _introductionError != null
+                                ? Colors.red
+                                : const Color(0xFF5C775E),
                             width: 1,
                           ),
                         ),
-                        child: const TextField(
+                        child: TextField(
+                          controller: _introductionController,
                           maxLines: null,
                           expands: true,
-                          style: TextStyle(
+                          onChanged: (_) =>
+                              setState(() => _introductionError = null),
+                          style: const TextStyle(
                             fontFamily: 'RebornFont',
                             fontSize: 15,
                             color: Color(0xFF1F402C),
                           ),
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             border: InputBorder.none,
-                            hintText:
-                            '공방 소개 및 작업 가능한 내용을 자유롭게 작성해주세요.',
+                            hintText: '공방 소개 및 작업 가능한 내용을 자유롭게 작성해주세요.',
                             hintStyle: TextStyle(
                               fontFamily: 'RebornFont',
                               fontSize: 15,
@@ -192,6 +309,20 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                           ),
                         ),
                       ),
+                      if (_introductionError != null) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            _introductionError!,
+                            style: const TextStyle(
+                              fontFamily: 'RebornFont',
+                              fontSize: 13,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       Row(
                         children: [
@@ -199,24 +330,18 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                             child: SizedBox(
                               height: 44,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                      const ExpertRegister2Screen(),
-                                    ),
-                                  );
-                                },
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => Navigator.pop(context),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF87A676),
+                                  backgroundColor: const Color(0xFFB0C4A8),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shadowColor: Colors.transparent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                     side: const BorderSide(
-                                      color: Color(0xFF6E8B64),
+                                      color: Color(0xFF8A9E80),
                                       width: 1,
                                     ),
                                   ),
@@ -237,7 +362,7 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                             child: SizedBox(
                               height: 44,
                               child: ElevatedButton(
-                                onPressed: () {},
+                                onPressed: _isLoading ? null : _register,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF87A676),
                                   foregroundColor: Colors.white,
@@ -251,14 +376,23 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                                     ),
                                   ),
                                 ),
-                                child: const Text(
-                                  '등록하기',
-                                  style: TextStyle(
-                                    fontFamily: 'RebornFont',
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        '등록하기',
+                                        style: TextStyle(
+                                          fontFamily: 'RebornFont',
+                                          fontSize: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
@@ -276,4 +410,3 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
     );
   }
 }
-

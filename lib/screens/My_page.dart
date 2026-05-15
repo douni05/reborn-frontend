@@ -3,11 +3,14 @@ import '../core/storage/auth_storage.dart';
 import '../core/user_session.dart';
 import '../models/member_model.dart';
 import '../services/member_service.dart';
+import '../services/expert_service.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'Login.dart';
 import 'Reform_history.dart';
 import 'Expert_register1.dart';
+import 'Expert_edit.dart';
 import 'Expert_dashboard.dart';
+import 'My_requests.dart';
 
 String _getTitleEmoji(String title) {
   switch (title) {
@@ -40,16 +43,22 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   final MemberService _memberService = MemberService();
+  final ExpertService _expertService = ExpertService();
   MemberProfile? _profile;
   bool _isLoading = true;
   late String _nickname;
   String? _selectedTitle;
+
+  bool _isExpert = false;
+  Map<String, dynamic>? _expertInfo;
+  bool _expertLoading = true;
 
   @override
   void initState() {
     super.initState();
     _nickname = UserSession.nickname.isNotEmpty ? UserSession.nickname : '닉네임';
     _loadProfile();
+    _loadExpertInfo();
   }
 
   Future<void> _loadProfile() async {
@@ -64,6 +73,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadExpertInfo() async {
+    try {
+      final expert = await _expertService.isExpert();
+      if (expert) {
+        final info = await _expertService.getMyExpert();
+        if (!mounted) return;
+        setState(() {
+          _isExpert = true;
+          _expertInfo = info;
+          _expertLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isExpert = false;
+          _expertInfo = null;
+          _expertLoading = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _expertLoading = false);
     }
   }
 
@@ -546,6 +580,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                       const SizedBox(height: 10),
                       _buildMenuButton(
+                        text: '나의 요청 현황',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MyRequestsScreen()),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildMenuButton(
                         text: '닉네임 수정',
                         onTap: _showNicknameEditDialog,
                       ),
@@ -555,26 +597,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         onTap: _showTitleChangeDialog,
                       ),
                       const SizedBox(height: 22),
-                      _buildMenuButton(
-                        text: '전문가 등록',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ExpertRegister1Screen(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildMenuButton(
-                        text: '전문가 대시보드',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ExpertDashboardScreen(),
-                          ),
-                        ),
-                      ),
+                      _buildExpertSection(),
                       const SizedBox(height: 22),
+                      _buildLogoutButton(),
+                      const SizedBox(height: 10),
                       _buildWithdrawButton(),
                     ],
                   ),
@@ -687,6 +713,375 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
+  Widget _buildExpertSection() {
+    if (_expertLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: CircularProgressIndicator(
+            color: Color(0xFF87A676),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (!_isExpert) {
+      // 전문가 아닌 경우 → 등록 버튼
+      return _buildMenuButton(
+        text: '전문가 등록',
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ExpertRegister1Screen()),
+          );
+          _loadExpertInfo();
+        },
+      );
+    }
+
+    // 전문가인 경우 → 정보 카드
+    final info = _expertInfo!;
+    final imageUrl = info['imageUrl'] as String?;
+    final shopName = info['shopName'] ?? '';
+    final category = info['category'] ?? '';
+    final address = info['address'] ?? '';
+    final phone = info['phone'] ?? '';
+    final introduction = info['introduction'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            '🏪 내 전문가 정보',
+            style: TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 16,
+              color: Color(0xFF1F402C),
+            ),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF87A676), width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 이미지
+              if (imageUrl != null && imageUrl.isNotEmpty)
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14)),
+                  child: Image.network(
+                    imageUrl,
+                    width: double.infinity,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFD9EACD),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(14)),
+                  ),
+                  child: const Icon(Icons.storefront_outlined,
+                      size: 36, color: Color(0xFF87A676)),
+                ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shopName,
+                      style: const TextStyle(
+                        fontFamily: 'RebornFont',
+                        fontSize: 20,
+                        color: Color(0xFF1F402C),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (category.isNotEmpty)
+                      Row(
+                        children: [
+                          const Icon(Icons.checkroom_outlined,
+                              size: 15, color: Color(0xFF6E7B6E)),
+                          const SizedBox(width: 5),
+                          Text(category,
+                              style: const TextStyle(
+                                  fontFamily: 'RebornFont',
+                                  fontSize: 13,
+                                  color: Color(0xFF6E7B6E))),
+                        ],
+                      ),
+                    if (address.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined,
+                              size: 15, color: Color(0xFF6E7B6E)),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(address,
+                                style: const TextStyle(
+                                    fontFamily: 'RebornFont',
+                                    fontSize: 13,
+                                    color: Color(0xFF6E7B6E)),
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (phone.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.phone_outlined,
+                              size: 15, color: Color(0xFF6E7B6E)),
+                          const SizedBox(width: 5),
+                          Text(phone,
+                              style: const TextStyle(
+                                  fontFamily: 'RebornFont',
+                                  fontSize: 13,
+                                  color: Color(0xFF6E7B6E))),
+                        ],
+                      ),
+                    ],
+                    if (introduction.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        introduction,
+                        style: const TextStyle(
+                          fontFamily: 'RebornFont',
+                          fontSize: 12,
+                          color: Color(0xFF888888),
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final updated = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ExpertEditScreen(expert: info),
+                                ),
+                              );
+                              if (updated == true) {
+                                setState(() => _expertLoading = true);
+                                _loadExpertInfo();
+                              }
+                            },
+                            child: Container(
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF87A676),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '정보 수정',
+                                  style: TextStyle(
+                                    fontFamily: 'RebornFont',
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _showExpertDeleteDialog,
+                            child: Container(
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: Colors.red.shade300, width: 1),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '등록 취소',
+                                  style: TextStyle(
+                                    fontFamily: 'RebornFont',
+                                    fontSize: 14,
+                                    color: Colors.red.shade400,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildMenuButton(
+          text: '전문가 대시보드',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ExpertDashboardScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showExpertDeleteDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (dialogContext) {
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAED),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '전문가 등록을 취소할까요?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'RebornFont',
+                      fontSize: 20,
+                      color: Color(0xFF1F402C),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '전문가 연결 목록에서 삭제돼요',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'RebornFont',
+                      fontSize: 13,
+                      color: Color(0xFF888888),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: isDeleting
+                              ? null
+                              : () async {
+                                  setDialogState(() => isDeleting = true);
+                                  try {
+                                    await _expertService.deleteExpert();
+                                    if (!mounted) return;
+                                    Navigator.pop(dialogContext);
+                                    setState(() {
+                                      _isExpert = false;
+                                      _expertInfo = null;
+                                    });
+                                  } catch (e) {
+                                    setDialogState(() => isDeleting = false);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e
+                                            .toString()
+                                            .replaceFirst('Exception: ', '')),
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: Container(
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade400,
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Center(
+                              child: isDeleting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white))
+                                  : const Text(
+                                      '등록 취소',
+                                      style: TextStyle(
+                                          fontFamily: 'RebornFont',
+                                          fontSize: 14,
+                                          color: Colors.white),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(dialogContext),
+                          child: Container(
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F1F1),
+                              borderRadius: BorderRadius.circular(18),
+                              border:
+                                  Border.all(color: const Color(0xFFB7B7B7)),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '취소',
+                                style: TextStyle(
+                                    fontFamily: 'RebornFont',
+                                    fontSize: 14,
+                                    color: Color(0xFF1F402C)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMenuButton({required String text, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -700,6 +1095,127 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: Text(
           '• $text',
           style: const TextStyle(
+            fontFamily: 'RebornFont',
+            fontSize: 16,
+            color: Color(0xFF1F402C),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _logout() {
+    AuthStorage().token = null;
+    AuthStorage().userId = null;
+    AuthStorage().nickname = null;
+    UserSession.init(0, '');
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAED),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '로그아웃 할까요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'RebornFont',
+                  fontSize: 22,
+                  color: Color(0xFF1F402C),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(dialogContext);
+                        _logout();
+                      },
+                      child: Container(
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3E5C45),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '로그아웃',
+                            style: TextStyle(
+                              fontFamily: 'RebornFont',
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(dialogContext),
+                      child: Container(
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F1F1),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFB7B7B7)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '취소',
+                            style: TextStyle(
+                              fontFamily: 'RebornFont',
+                              fontSize: 14,
+                              color: Color(0xFF1F402C),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return GestureDetector(
+      onTap: _showLogoutDialog,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          '• 로그아웃',
+          style: TextStyle(
             fontFamily: 'RebornFont',
             fontSize: 16,
             color: Color(0xFF1F402C),
