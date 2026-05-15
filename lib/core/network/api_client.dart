@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import '../storage/auth_storage.dart';
 
 class ApiClient {
-  // static const String _baseUrl = 'http://10.0.2.2:8080';
-  static const String _baseUrl = 'http://192.168.55.129:8080';
+  static const String _baseUrl = 'http://10.0.2.2:8080';
+  // static const String _baseUrl = 'http://192.168.55.129:8080'; // 실기기용
 
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
