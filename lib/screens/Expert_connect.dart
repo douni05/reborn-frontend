@@ -1,8 +1,88 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../services/expert_service.dart';
+import '../services/reform_request_service.dart';
 
-class ExpertConnectScreen extends StatelessWidget {
+class ExpertConnectScreen extends StatefulWidget {
   const ExpertConnectScreen({super.key});
+
+  @override
+  State<ExpertConnectScreen> createState() => _ExpertConnectScreenState();
+}
+
+class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
+  final _expertService = ExpertService();
+  final _searchController = TextEditingController();
+
+  List<Map<String, dynamic>> _experts = [];
+  List<Map<String, dynamic>> _filtered = [];
+  bool _isLoading = true;
+  String? _error;
+  String _selectedCategory = '전체';
+
+  final List<String> _categories = ['전체', '의류', '목재/가구', '금속', '플라스틱', '유리', '액세서리', '전자제품', '기타'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExperts();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadExperts() async {
+    try {
+      final data = await _expertService.getExperts();
+      setState(() {
+        _experts = data;
+        _filtered = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onSearch(String query) {
+    _applyFilter();
+  }
+
+  void _applyFilter() {
+    final q = _searchController.text.trim().toLowerCase();
+    setState(() {
+      _filtered = _experts.where((e) {
+        final name = (e['shopName'] ?? '').toString().toLowerCase();
+        final cat = (e['category'] ?? '').toString().toLowerCase();
+        final addr = (e['address'] ?? '').toString().toLowerCase();
+        final matchSearch = q.isEmpty || name.contains(q) || cat.contains(q) || addr.contains(q);
+        final matchCat = _selectedCategory == '전체' || cat == _selectedCategory.toLowerCase();
+        return matchSearch && matchCat;
+      }).toList();
+    });
+  }
+
+  Future<void> _onInquiryTap(Map<String, dynamic> expert) async {
+    final shopId = expert['shopId'] as int;
+    final hasActive = await ReformRequestService().hasActiveRequest(shopId);
+    if (!mounted) return;
+    if (hasActive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('이미 요청 중인 전문가예요 📬', style: TextStyle(fontFamily: 'RebornFont')),
+          backgroundColor: Color(0xFF5C775E),
+        ),
+      );
+      return;
+    }
+    _showInquiryBottomSheet(context, expert);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,62 +134,160 @@ class ExpertConnectScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(10, 18, 10, 0),
                         child: Column(
                           children: [
+                            // 검색창
                             Container(
                               height: 50,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF6F6F6),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: const Row(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.search,
                                     color: Color(0xFF8BA58A),
                                     size: 24,
                                   ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Search',
-                                    style: TextStyle(
-                                      fontFamily: 'RebornFont',
-                                      fontSize: 16,
-                                      color: Color(0xFF9CA39C),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      onChanged: _onSearch,
+                                      style: const TextStyle(
+                                        fontFamily: 'RebornFont',
+                                        fontSize: 16,
+                                        color: Color(0xFF1F402C),
+                                      ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: '공방명, 카테고리, 지역 검색',
+                                        hintStyle: TextStyle(
+                                          fontFamily: 'RebornFont',
+                                          fontSize: 16,
+                                          color: Color(0xFF9CA39C),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    _WorkshopCard(
-                                      imagePath: 'assets/icons/exg_workshop.png',
-                                      title: '공방이름',
-                                      distance: '1km',
-                                      category: '의류',
-                                      place: '액세서리',
-                                      onInquiryTap: () {
-                                        _showInquiryBottomSheet(context);
-                                      },
+                            const SizedBox(height: 12),
+                            // 카테고리 필터 칩
+                            SizedBox(
+                              height: 36,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                itemCount: _categories.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final cat = _categories[index];
+                                  final isSelected = _selectedCategory == cat;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() => _selectedCategory = cat);
+                                      _applyFilter();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF87A676) : Colors.white,
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: isSelected ? const Color(0xFF87A676) : const Color(0xFFB0C4A8),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        cat,
+                                        style: TextStyle(
+                                          fontFamily: 'RebornFont',
+                                          fontSize: 13,
+                                          color: isSelected ? Colors.white : const Color(0xFF1F402C),
+                                        ),
+                                      ),
                                     ),
-                                    const SizedBox(height: 14),
-                                    _WorkshopCard(
-                                      imagePath: 'assets/icons/exg_workshop.png',
-                                      title: '공방이름',
-                                      distance: '1km',
-                                      category: '가구',
-                                      place: '',
-                                      onInquiryTap: () {
-                                        _showInquiryBottomSheet(context);
-                                      },
-                                    ),
-                                    const SizedBox(height: 20),
-                                  ],
-                                ),
+                                  );
+                                },
                               ),
+                            ),
+                            const SizedBox(height: 12),
+                            Expanded(
+                              child: _isLoading
+                                  ? const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFF87A676),
+                                      ),
+                                    )
+                                  : _error != null
+                                      ? Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Text('😥',
+                                                  style: TextStyle(fontSize: 40)),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                _error!,
+                                                style: const TextStyle(
+                                                  fontFamily: 'RebornFont',
+                                                  fontSize: 15,
+                                                  color: Color(0xFF6E7B6E),
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 16),
+                                              TextButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _isLoading = true;
+                                                    _error = null;
+                                                  });
+                                                  _loadExperts();
+                                                },
+                                                child: const Text(
+                                                  '다시 시도',
+                                                  style: TextStyle(
+                                                    fontFamily: 'RebornFont',
+                                                    color: Color(0xFF87A676),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : _filtered.isEmpty
+                                          ? const Center(
+                                              child: Text(
+                                                '등록된 전문가가 없어요',
+                                                style: TextStyle(
+                                                  fontFamily: 'RebornFont',
+                                                  fontSize: 15,
+                                                  color: Color(0xFF6E7B6E),
+                                                ),
+                                              ),
+                                            )
+                                          : RefreshIndicator(
+                                              color: const Color(0xFF87A676),
+                                              onRefresh: _loadExperts,
+                                              child: ListView.separated(
+                                                itemCount: _filtered.length,
+                                                separatorBuilder: (_, __) =>
+                                                    const SizedBox(height: 14),
+                                                padding:
+                                                    const EdgeInsets.only(bottom: 20),
+                                                itemBuilder: (context, index) {
+                                                  final expert = _filtered[index];
+                                                  return _WorkshopCard(
+                                                    expert: expert,
+                                                    onInquiryTap: () => _onInquiryTap(expert),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                             ),
                           ],
                         ),
@@ -126,37 +304,36 @@ class ExpertConnectScreen extends StatelessWidget {
     );
   }
 
-  static void _showInquiryBottomSheet(BuildContext context) {
+  void _showInquiryBottomSheet(
+      BuildContext context, Map<String, dynamic> expert) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return const _InquiryBottomSheet();
-      },
+      builder: (context) => _InquiryBottomSheet(expert: expert),
     );
   }
 }
 
 class _WorkshopCard extends StatelessWidget {
-  final String imagePath;
-  final String title;
-  final String distance;
-  final String category;
-  final String place;
+  final Map<String, dynamic> expert;
   final VoidCallback onInquiryTap;
 
   const _WorkshopCard({
-    required this.imagePath,
-    required this.title,
-    required this.distance,
-    required this.category,
-    required this.place,
+    required this.expert,
     required this.onInquiryTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = expert['imageUrl'] as String?;
+    final shopName = expert['shopName'] ?? '공방';
+    final category = expert['category'] ?? '';
+    final address = expert['address'] ?? '';
+    final introduction = expert['introduction'] ?? '';
+    final avgRating = (expert['averageRating'] as num?)?.toDouble() ?? 0.0;
+    final reviewCount = (expert['reviewCount'] as num?)?.toInt() ?? 0;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -170,16 +347,22 @@ class _WorkshopCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 이미지 영역
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(18),
-            ),
-            child: Image.asset(
-              imagePath,
-              width: double.infinity,
-              height: 190,
-              fit: BoxFit.cover,
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: imageUrl != null && imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    width: double.infinity,
+                    height: 190,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return _imagePlaceholder();
+                    },
+                  )
+                : _imagePlaceholder(),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
@@ -188,24 +371,16 @@ class _WorkshopCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'RebornFont',
-                        fontSize: 21,
-                        color: Color(0xFF1F402C),
+                    Expanded(
+                      child: Text(
+                        shopName,
+                        style: const TextStyle(
+                          fontFamily: 'RebornFont',
+                          fontSize: 21,
+                          color: Color(0xFF1F402C),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      distance,
-                      style: const TextStyle(
-                        fontFamily: 'RebornFont',
-                        fontSize: 12,
-                        color: Color(0xFF6E7B6E),
-                      ),
-                    ),
-                    const Spacer(),
                     GestureDetector(
                       onTap: onInquiryTap,
                       child: Container(
@@ -229,14 +404,24 @@ class _WorkshopCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (avgRating > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 14, color: Color(0xFFF5A623)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${avgRating.toStringAsFixed(1)} ($reviewCount개)',
+                        style: const TextStyle(fontFamily: 'RebornFont', fontSize: 12, color: Color(0xFF6E7B6E)),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Image.asset(
-                      'assets/icons/bag.png',
-                      width: 16,
-                      height: 16,
-                    ),
+                    const Icon(Icons.checkroom_outlined,
+                        size: 16, color: Color(0xFF1F402C)),
                     const SizedBox(width: 6),
                     Text(
                       category,
@@ -246,30 +431,63 @@ class _WorkshopCard extends StatelessWidget {
                         color: Color(0xFF1F402C),
                       ),
                     ),
-                    if (place.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        place,
-                        style: const TextStyle(
-                          fontFamily: 'RebornFont',
-                          fontSize: 14,
-                          color: Color(0xFF1F402C),
+                    if (address.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      const Icon(Icons.location_on_outlined,
+                          size: 16, color: Color(0xFF6E7B6E)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          address,
+                          style: const TextStyle(
+                            fontFamily: 'RebornFont',
+                            fontSize: 13,
+                            color: Color(0xFF6E7B6E),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  '공방설명공방설명공방설명공방설명공방설명공방설명공방설명공방설명공방설명공방설명',
-                  style: TextStyle(
-                    fontFamily: 'RebornFont',
-                    fontSize: 12,
-                    color: Color(0xFF6E7B6E),
-                    height: 1.35,
+                if (introduction.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    introduction,
+                    style: const TextStyle(
+                      fontFamily: 'RebornFont',
+                      fontSize: 12,
+                      color: Color(0xFF6E7B6E),
+                      height: 1.35,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 190,
+      color: const Color(0xFFD9EACD),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.storefront_outlined, size: 48, color: Color(0xFF87A676)),
+          SizedBox(height: 8),
+          Text(
+            '공방 사진 없음',
+            style: TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 13,
+              color: Color(0xFF6E8B64),
             ),
           ),
         ],
@@ -279,7 +497,9 @@ class _WorkshopCard extends StatelessWidget {
 }
 
 class _InquiryBottomSheet extends StatefulWidget {
-  const _InquiryBottomSheet();
+  final Map<String, dynamic> expert;
+
+  const _InquiryBottomSheet({required this.expert});
 
   @override
   State<_InquiryBottomSheet> createState() => _InquiryBottomSheetState();
@@ -288,6 +508,7 @@ class _InquiryBottomSheet extends StatefulWidget {
 class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   String selectedDesign = '솔루션 받은 리폼 디자인을 선택하세요.';
   final TextEditingController requestController = TextEditingController();
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -298,6 +519,12 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final shopName = widget.expert['shopName'] ?? '공방';
+    final category = widget.expert['category'] ?? '';
+    final address = widget.expert['address'] ?? '';
+    final detailAddress = widget.expert['detailAddress'] ?? '';
+    final phone = widget.expert['phone'] ?? '';
+    final imageUrl = widget.expert['imageUrl'] as String?;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.82,
@@ -308,9 +535,7 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFFF8FAED),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             top: false,
@@ -327,10 +552,10 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                         children: [
                           Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  '공방이름',
-                                  style: TextStyle(
+                                  shopName,
+                                  style: const TextStyle(
                                     fontFamily: 'RebornFont',
                                     fontSize: 28,
                                     color: Color(0xFF1F402C),
@@ -338,97 +563,82 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Icon(
-                                  Icons.close,
-                                  size: 24,
-                                  color: Color(0xFF1F402C),
-                                ),
+                                onTap: () => Navigator.pop(context),
+                                child: const Icon(Icons.close,
+                                    size: 24, color: Color(0xFF1F402C)),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.checkroom_outlined,
-                                size: 18,
-                                color: Color(0xFF1F402C),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '의류 | 액세서리',
-                                style: TextStyle(
-                                  fontFamily: 'RebornFont',
-                                  fontSize: 16,
-                                  color: Color(0xFF1F402C),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 18,
-                                color: Color(0xFF1F402C),
-                              ),
-                              SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'OO시 OO구 OO동 123-12',
-                                  style: TextStyle(
+                          if (category.isNotEmpty)
+                            Row(
+                              children: [
+                                const Icon(Icons.checkroom_outlined,
+                                    size: 18, color: Color(0xFF1F402C)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  category,
+                                  style: const TextStyle(
                                     fontFamily: 'RebornFont',
-                                    fontSize: 15,
+                                    fontSize: 16,
                                     color: Color(0xFF1F402C),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 24, top: 2),
-                            child: Text(
-                              'Google Maps에서 열기 >',
-                              style: TextStyle(
-                                fontFamily: 'RebornFont',
-                                fontSize: 13,
-                                color: Color(0xFF6E7B6E),
-                              ),
+                              ],
                             ),
-                          ),
                           const SizedBox(height: 8),
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.phone_outlined,
-                                size: 18,
-                                color: Color(0xFF1F402C),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                '010-0000-0000',
-                                style: TextStyle(
-                                  fontFamily: 'RebornFont',
-                                  fontSize: 16,
-                                  color: Color(0xFF1F402C),
+                          if (address.isNotEmpty)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.location_on_outlined,
+                                    size: 18, color: Color(0xFF1F402C)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    detailAddress.isNotEmpty
+                                        ? '$address $detailAddress'
+                                        : address,
+                                    style: const TextStyle(
+                                      fontFamily: 'RebornFont',
+                                      fontSize: 15,
+                                      color: Color(0xFF1F402C),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          if (phone.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.phone_outlined,
+                                    size: 18, color: Color(0xFF1F402C)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  phone,
+                                  style: const TextStyle(
+                                    fontFamily: 'RebornFont',
+                                    fontSize: 16,
+                                    color: Color(0xFF1F402C),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              'assets/icons/exg_workshop.png',
-                              width: double.infinity,
-                              height: 136,
-                              fit: BoxFit.cover,
-                            ),
+                            child: imageUrl != null && imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    width: double.infinity,
+                                    height: 136,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _sheetPlaceholder(),
+                                  )
+                                : _sheetPlaceholder(),
                           ),
                           const SizedBox(height: 10),
                           const Text(
@@ -442,35 +652,27 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                           const SizedBox(height: 10),
                           GestureDetector(
                             onTap: () async {
-                              final result = await showModalBottomSheet<String>(
+                              final result =
+                                  await showModalBottomSheet<String>(
                                 context: context,
                                 backgroundColor: Colors.transparent,
-                                builder: (context) {
-                                  return _DesignSelectSheet(
-                                    selectedValue: selectedDesign,
-                                  );
-                                },
+                                builder: (context) => _DesignSelectSheet(
+                                  selectedValue: selectedDesign,
+                                ),
                               );
-
                               if (result != null) {
-                                setState(() {
-                                  selectedDesign = result;
-                                });
+                                setState(() => selectedDesign = result);
                               }
                             },
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 14,
-                              ),
+                                  horizontal: 14, vertical: 14),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFCFE4C6),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: const Color(0xFF6E8B64),
-                                  width: 1,
-                                ),
+                                    color: const Color(0xFF6E8B64), width: 1),
                               ),
                               child: Row(
                                 children: [
@@ -484,11 +686,8 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                                       ),
                                     ),
                                   ),
-                                  const Icon(
-                                    Icons.keyboard_arrow_down,
-                                    color: Color(0xFF1F402C),
-                                    size: 24,
-                                  ),
+                                  const Icon(Icons.keyboard_arrow_down,
+                                      color: Color(0xFF1F402C), size: 24),
                                 ],
                               ),
                             ),
@@ -507,16 +706,12 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                             width: double.infinity,
                             height: 106,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
+                                horizontal: 14, vertical: 12),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF7F7F7),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: const Color(0xFF3E5C45),
-                                width: 1,
-                              ),
+                                  color: const Color(0xFF3E5C45), width: 1),
                             ),
                             child: TextField(
                               controller: requestController,
@@ -543,7 +738,6 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                       ),
                     ),
                   ),
-
                   Container(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
                     color: const Color(0xFFF8FAED),
@@ -551,7 +745,46 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _isSending ? null : () async {
+                          if (requestController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('요청 내용을 입력해주세요', style: TextStyle(fontFamily: 'RebornFont'))),
+                            );
+                            return;
+                          }
+                          setState(() => _isSending = true);
+                          try {
+                            final shopId = widget.expert['shopId'] as int;
+                            await ReformRequestService().createRequest(
+                              shopId: shopId,
+                              designTitle: selectedDesign == '솔루션 받은 리폼 디자인을 선택하세요.' ? '직접 요청' : selectedDesign,
+                              requestContent: requestController.text.trim(),
+                            );
+                            if (!mounted) return;
+                            Navigator.pop(context); // bottom sheet 닫기
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: const Color(0xFFF8FAED),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: const Text('요청 완료 ✅', style: TextStyle(fontFamily: 'RebornFont', fontSize: 20, color: Color(0xFF1F402C))),
+                                content: const Text('전문가에게 요청이 전달됐어요!\n마이페이지 → 나의 요청 현황에서 확인할 수 있어요.', style: TextStyle(fontFamily: 'RebornFont', fontSize: 14, color: Color(0xFF33543C), height: 1.5)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('확인', style: TextStyle(fontFamily: 'RebornFont', color: Color(0xFF87A676))),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            setState(() => _isSending = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(fontFamily: 'RebornFont')), backgroundColor: const Color(0xFF5C3D2E)),
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF87A676),
                           foregroundColor: Colors.white,
@@ -580,14 +813,21 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
       },
     );
   }
+
+  Widget _sheetPlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 136,
+      color: const Color(0xFFD9EACD),
+      child: const Icon(Icons.storefront_outlined,
+          size: 40, color: Color(0xFF87A676)),
+    );
+  }
 }
 
 class _DesignSelectSheet extends StatelessWidget {
   final String selectedValue;
-
-  const _DesignSelectSheet({
-    required this.selectedValue,
-  });
+  const _DesignSelectSheet({required this.selectedValue});
 
   @override
   Widget build(BuildContext context) {
@@ -601,34 +841,26 @@ class _DesignSelectSheet extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       decoration: const BoxDecoration(
         color: Color(0xFFF8FAED),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: options.map((option) {
           final isSelected = option == selectedValue;
           return GestureDetector(
-            onTap: () {
-              Navigator.pop(context, option);
-            },
+            onTap: () => Navigator.pop(context, option),
             child: Container(
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
-              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color(0xFFCFE4C6)
                     : const Color(0xFFF7F7F7),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFF6E8B64),
-                  width: 1,
-                ),
+                    color: const Color(0xFF6E8B64), width: 1),
               ),
               child: Text(
                 option,
