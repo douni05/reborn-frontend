@@ -5,11 +5,14 @@ import '../screens/Reform_history.dart';
 import '../screens/Expert_connect.dart';
 import '../screens/My_page.dart';
 import '../screens/camera_screen.dart';
+import 'package:flutter/services.dart';
 
 /// 앱 공통 하단 네비게이션 바
 /// [selectedIndex] 0=홈, 1=리폼하기, 2=중앙버튼, 3=전문가연결, 4=마이페이지
 class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
+
+  static const _mlkitChannel = MethodChannel('com.jimmy.reborn.reborn_fe/mlkit');
 
   const BottomNavBar({super.key, this.selectedIndex = 0});
 
@@ -88,13 +91,12 @@ class BottomNavBar extends StatelessWidget {
             Positioned(
               top: -12,
               child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CameraScreen(),
-                    ),
-                  );
+                onTap: () async {
+                  try {
+                    await _mlkitChannel.invokeMethod('launchMLKit');
+                  } on PlatformException catch (e) {
+                    print('ML Kit 실행 오류: ${e.message}');
+                  }
                 },
                 child: Container(
                   width: 68,
