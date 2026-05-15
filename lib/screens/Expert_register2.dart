@@ -1,10 +1,65 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
-import 'Expert_register1.dart';
 import 'Expert_register3.dart';
 
-class ExpertRegister2Screen extends StatelessWidget {
-  const ExpertRegister2Screen({super.key});
+class ExpertRegister2Screen extends StatefulWidget {
+  final String shopName;
+  final String businessNumber;
+  final String ownerName;
+  final String phone;
+  final File? imageFile;
+
+  const ExpertRegister2Screen({
+    super.key,
+    required this.shopName,
+    required this.businessNumber,
+    required this.ownerName,
+    required this.phone,
+    this.imageFile,
+  });
+
+  @override
+  State<ExpertRegister2Screen> createState() => _ExpertRegister2ScreenState();
+}
+
+class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
+  final _addressController = TextEditingController();
+  final _detailAddressController = TextEditingController();
+
+  String? _addressError;
+  String? _detailAddressError;
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    _detailAddressController.dispose();
+    super.dispose();
+  }
+
+  void _goNext() {
+    setState(() {
+      _addressError = _addressController.text.trim().isEmpty ? '주소를 입력해주세요' : null;
+      _detailAddressError = _detailAddressController.text.trim().isEmpty ? '상세 주소를 입력해주세요' : null;
+    });
+
+    if (_addressError != null || _detailAddressError != null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExpertRegister3Screen(
+          shopName: widget.shopName,
+          businessNumber: widget.businessNumber,
+          ownerName: widget.ownerName,
+          phone: widget.phone,
+          address: _addressController.text.trim(),
+          detailAddress: _detailAddressController.text.trim(),
+          imageFile: widget.imageFile,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +109,7 @@ class ExpertRegister2Screen extends StatelessWidget {
                   children: [
                     const Row(
                       children: [
-                        Text(
-                          '📍',
-                          style: TextStyle(fontSize: 22),
-                        ),
+                        Text('📍', style: TextStyle(fontSize: 22)),
                         SizedBox(width: 8),
                         Text(
                           '공방위치',
@@ -70,27 +122,23 @@ class ExpertRegister2Screen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      '주소',
-                      style: TextStyle(
-                        fontFamily: 'RebornFont',
-                        fontSize: 18,
-                        color: Color(0xFF1F402C),
-                      ),
-                    ),
+                    _label('주소'),
                     const SizedBox(height: 8),
-                    _inputBox(hint: '기본 주소'),
+                    _inputBox(
+                      controller: _addressController,
+                      hint: '기본 주소',
+                      error: _addressError,
+                      onChanged: (_) => setState(() => _addressError = null),
+                    ),
                     const SizedBox(height: 18),
-                    const Text(
-                      '상세 주소',
-                      style: TextStyle(
-                        fontFamily: 'RebornFont',
-                        fontSize: 18,
-                        color: Color(0xFF1F402C),
-                      ),
-                    ),
+                    _label('상세 주소'),
                     const SizedBox(height: 8),
-                    _inputBox(hint: '상세 주소 입력'),
+                    _inputBox(
+                      controller: _detailAddressController,
+                      hint: '상세 주소 입력',
+                      error: _detailAddressError,
+                      onChanged: (_) => setState(() => _detailAddressError = null),
+                    ),
                     const SizedBox(height: 28),
                     Row(
                       children: [
@@ -98,24 +146,16 @@ class ExpertRegister2Screen extends StatelessWidget {
                           child: SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const ExpertRegister1Screen(),
-                                  ),
-                                );
-                              },
+                              onPressed: () => Navigator.pop(context),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF87A676),
+                                backgroundColor: const Color(0xFFB0C4A8),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shadowColor: Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   side: const BorderSide(
-                                    color: Color(0xFF6E8B64),
+                                    color: Color(0xFF8A9E80),
                                     width: 1,
                                   ),
                                 ),
@@ -136,15 +176,7 @@ class ExpertRegister2Screen extends StatelessWidget {
                           child: SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                    const ExpertRegister3Screen(),
-                                  ),
-                                );
-                              },
+                              onPressed: _goNext,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF87A676),
                                 foregroundColor: Colors.white,
@@ -182,36 +214,72 @@ class ExpertRegister2Screen extends StatelessWidget {
     );
   }
 
-  static Widget _inputBox({required String hint}) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFF3E5C45),
-          width: 1,
-        ),
-      ),
-      alignment: Alignment.centerLeft,
-      child: TextField(
-        style: const TextStyle(
-          fontFamily: 'RebornFont',
-          fontSize: 16,
-          color: Color(0xFF1F402C),
-        ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: hint,
-          hintStyle: const TextStyle(
-            fontFamily: 'RebornFont',
-            fontSize: 16,
-            color: Color(0xFF9AA39A),
-          ),
-        ),
+  Widget _label(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontFamily: 'RebornFont',
+        fontSize: 18,
+        color: Color(0xFF1F402C),
       ),
     );
   }
-}
 
+  Widget _inputBox({
+    required TextEditingController controller,
+    required String hint,
+    String? error,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F7F7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: error != null ? Colors.red : const Color(0xFF3E5C45),
+              width: 1,
+            ),
+          ),
+          alignment: Alignment.centerLeft,
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            style: const TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 16,
+              color: Color(0xFF1F402C),
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: hint,
+              hintStyle: const TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 16,
+                color: Color(0xFF9AA39A),
+              ),
+            ),
+          ),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              error,
+              style: const TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 13,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
