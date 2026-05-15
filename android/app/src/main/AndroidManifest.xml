@@ -1,12 +1,14 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
+
     <application
         android:label="reborn_fe"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        tools:replace="android:icon,android:label,android:name">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,6 +36,14 @@
                 <data android:scheme="kakaoa06fce5e5d684837dbcd8b9dd22e69d5" android:host="oauth" />
             </intent-filter>
         </activity>
+
+<!--        <activity-->
+<!--            android:name="com.google.mlkit.vision.demo.EntryChoiceActivity"-->
+<!--            android:exported="true" />-->
+
+        <activity
+            android:name="com.google.mlkit.vision.demo.kotlin.StillImageActivity"
+            android:exported="true" />
 
         <!-- 네이버 로그인 액티비티 -->
         <activity

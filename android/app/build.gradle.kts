@@ -45,4 +45,5 @@ flutter {
 
 dependencies {
     implementation("com.navercorp.nid:oauth:5.10.0")
+    implementation(project(":mlkit-vision-demo"))
 }

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:keepScreenOn="true"
+    android:background="#F8FAED">
+
+  <ImageView
+      android:id="@+id/preview"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:adjustViewBounds="true"
+      app:layout_constraintBottom_toTopOf="@+id/control"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent" />
+
+  <com.google.mlkit.vision.demo.GraphicOverlay
+      android:id="@+id/graphic_overlay"
+      android:layout_width="0dp"
+      android:layout_height="0dp"
+      app:layout_constraintLeft_toLeftOf="@id/preview"
+      app:layout_constraintRight_toRightOf="@id/preview"
+      app:layout_constraintTop_toTopOf="@id/preview"
+      app:layout_constraintBottom_toBottomOf="@id/preview"/>
+
+  <LinearLayout
+      android:id="@+id/control"
+      android:layout_width="match_parent"
+      android:layout_height="90dp"
+      android:background="#DAF3D1"
+      android:orientation="vertical"
+      android:gravity="center"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent">
+
+    <!-- 상태 1: 이미지 선택 전 버튼 -->
+    <Button
+        android:id="@+id/select_image_button"
+        android:layout_width="180dp"
+        android:layout_height="55dp"
+        android:background="@drawable/rounded_button"
+        android:text="이미지 선택"
+        tools:visibility="visible" />
+
+    <!-- 상태 2: 이미지 인식 후 버튼들 (기본 숨김) -->
+    <LinearLayout
+        android:id="@+id/result_buttons_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:gravity="center"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+      <Button
+          android:id="@+id/reselect_image_button"
+          android:layout_width="0dp"
+          android:layout_weight="1"
+          android:layout_height="55dp"
+          android:layout_marginEnd="8dp"
+          android:background="@drawable/rounded_button"
+          android:text="이미지 재선택" />
+
+      <Button
+          android:id="@+id/manual_input_button"
+          android:layout_width="0dp"
+          android:layout_weight="1"
+          android:layout_height="55dp"
+          android:layout_marginStart="8dp"
+          android:background="@drawable/rounded_button"
+          android:text="직접 입력하기" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/control2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#000"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+      <Spinner
+          android:id="@+id/size_selector"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_gravity="center"
+          android:layout_weight="1" />
+
+      <Spinner
+          android:id="@+id/feature_selector"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_gravity="center"
+          android:layout_weight="1" />
+    </LinearLayout>
+  </LinearLayout>
+
+  <include
+      layout="@layout/settings_style"
+      android:id="@+id/settings_button"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      app:layout_constraintRight_toRightOf="@id/root"
+      app:layout_constraintTop_toTopOf="@id/root"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
