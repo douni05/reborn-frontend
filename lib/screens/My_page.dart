@@ -6,7 +6,6 @@ import '../services/member_service.dart';
 import '../services/expert_service.dart';
 import '../core/constants/level_constants.dart';
 import 'Login.dart';
-import 'Reform_history.dart';
 import 'Expert_register1.dart';
 import 'Expert_edit.dart';
 import 'Expert_dashboard.dart';
@@ -545,16 +544,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     children: [
                       _buildProfileCard(),
                       const SizedBox(height: 20),
-                      _buildMenuButton(
-                        text: '나의 리폼 히스토리',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReformHistoryScreen(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
                       _buildMenuButton(
                         text: '나의 요청 현황',
                         onTap: () => Navigator.push(
