@@ -1,6 +1,6 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
 import 'Expert_register3.dart';
 
 class ExpertRegister2Screen extends StatefulWidget {
@@ -29,6 +29,7 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
 
   String? _addressError;
   String? _detailAddressError;
+  bool _isGeocoding = false;
 
   @override
   void dispose() {
@@ -37,13 +38,48 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
     super.dispose();
   }
 
-  void _goNext() {
+  /// Nominatim(OpenStreetMap) 무료 지오코딩 API로 주소 → 위경도 변환
+  Future<(double?, double?)> _geocodeAddress(String address) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'q': address,
+          'format': 'json',
+          'limit': 1,
+          'countrycodes': 'kr',
+        },
+        options: Options(
+          headers: {'User-Agent': 'RebornApp/1.0'},
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      if (response.data is List && (response.data as List).isNotEmpty) {
+        final item = response.data[0] as Map<String, dynamic>;
+        final lat = double.tryParse(item['lat']?.toString() ?? '');
+        final lon = double.tryParse(item['lon']?.toString() ?? '');
+        return (lat, lon);
+      }
+    } catch (_) {}
+    return (null, null);
+  }
+
+  Future<void> _goNext() async {
     setState(() {
-      _addressError = _addressController.text.trim().isEmpty ? '주소를 입력해주세요' : null;
-      _detailAddressError = _detailAddressController.text.trim().isEmpty ? '상세 주소를 입력해주세요' : null;
+      _addressError =
+          _addressController.text.trim().isEmpty ? '주소를 입력해주세요' : null;
+      _detailAddressError = _detailAddressController.text.trim().isEmpty
+          ? '상세 주소를 입력해주세요'
+          : null;
     });
 
     if (_addressError != null || _detailAddressError != null) return;
+
+    setState(() => _isGeocoding = true);
+    final (lat, lon) = await _geocodeAddress(_addressController.text.trim());
+    if (!mounted) return;
+    setState(() => _isGeocoding = false);
 
     Navigator.push(
       context,
@@ -56,6 +92,8 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
           address: _addressController.text.trim(),
           detailAddress: _detailAddressController.text.trim(),
           imageFile: widget.imageFile,
+          latitude: lat,
+          longitude: lon,
         ),
       ),
     );
@@ -137,7 +175,8 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                       controller: _detailAddressController,
                       hint: '상세 주소 입력',
                       error: _detailAddressError,
-                      onChanged: (_) => setState(() => _detailAddressError = null),
+                      onChanged: (_) =>
+                          setState(() => _detailAddressError = null),
                     ),
                     const SizedBox(height: 28),
                     Row(
@@ -146,7 +185,9 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                           child: SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: _isGeocoding
+                                  ? null
+                                  : () => Navigator.pop(context),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFB0C4A8),
                                 foregroundColor: Colors.white,
@@ -155,9 +196,7 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   side: const BorderSide(
-                                    color: Color(0xFF8A9E80),
-                                    width: 1,
-                                  ),
+                                      color: Color(0xFF8A9E80), width: 1),
                                 ),
                               ),
                               child: const Text(
@@ -176,7 +215,7 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                           child: SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: _goNext,
+                              onPressed: _isGeocoding ? null : _goNext,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF87A676),
                                 foregroundColor: Colors.white,
@@ -185,19 +224,26 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                   side: const BorderSide(
-                                    color: Color(0xFF6E8B64),
-                                    width: 1,
-                                  ),
+                                      color: Color(0xFF6E8B64), width: 1),
                                 ),
                               ),
-                              child: const Text(
-                                '다음단계',
-                                style: TextStyle(
-                                  fontFamily: 'RebornFont',
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              child: _isGeocoding
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      '다음단계',
+                                      style: TextStyle(
+                                        fontFamily: 'RebornFont',
+                                        fontSize: 20,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                             ),
                           ),
                         ),
@@ -207,7 +253,6 @@ class _ExpertRegister2ScreenState extends State<ExpertRegister2Screen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),

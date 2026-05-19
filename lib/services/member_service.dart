@@ -24,6 +24,7 @@ class MemberService {
       storage.nickname = result.nickname;
       storage.totalXp = result.totalXp;
       storage.currentLevel = result.currentLevel;
+      await storage.save(); // 기기에 영구 저장
 
       return result;
     } on DioException catch (e) {

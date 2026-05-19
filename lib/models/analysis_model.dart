@@ -17,6 +17,9 @@ class AnalysisResult {
   final String? disposalIcon;
   final String? disposalMethod;
 
+  // 히스토리 표시용
+  final String? createdAt;
+
   AnalysisResult({
     this.analysisId,
     required this.materialType,
@@ -31,6 +34,7 @@ class AnalysisResult {
     this.estimatedCost,
     this.disposalIcon,
     this.disposalMethod,
+    this.createdAt,
   });
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) {
@@ -48,6 +52,7 @@ class AnalysisResult {
       estimatedCost: json['estimatedCost'] as String?,
       disposalIcon: json['disposalIcon'] as String?,
       disposalMethod: json['disposalMethod'] as String?,
+      createdAt: json['createdAt'] as String?,
     );
   }
 }

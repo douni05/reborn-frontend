@@ -1,11 +1,11 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../screens/Main_page.dart';
 import '../screens/Reform_history.dart';
 import '../screens/Expert_connect.dart';
 import '../screens/My_page.dart';
-import '../screens/camera_screen.dart';
-import 'package:flutter/services.dart';
+import '../screens/AI_camera_result.dart';
 
 /// 앱 공통 하단 네비게이션 바
 /// [selectedIndex] 0=홈, 1=리폼하기, 2=중앙버튼, 3=전문가연결, 4=마이페이지
@@ -93,10 +93,25 @@ class BottomNavBar extends StatelessWidget {
               child: GestureDetector(
                 onTap: () async {
                   try {
-                    await _mlkitChannel.invokeMethod('launchMLKit');
-                  } on PlatformException catch (e) {
-                    print('ML Kit 실행 오류: ${e.message}');
-                  }
+                    final result = await _mlkitChannel.invokeMethod<Map>('launchMLKit');
+                    if (result == null) return; // 사용자가 뒤로 나간 경우
+                    final label = result['label'] as String? ?? '';
+                    final confidence = (result['confidence'] as num?)?.toDouble() ?? 0.0;
+                    final imagePath = result['imagePath'] as String? ?? '';
+                    if (label.isEmpty) return;
+                    if (context.mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AICameraResultScreen(
+                            detectedLabel: label,
+                            confidence: confidence,
+                            imagePath: imagePath,
+                          ),
+                        ),
+                      );
+                    }
+                  } on PlatformException catch (_) {}
                 },
                 child: Container(
                   width: 68,

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../widgets/bottom_nav_bar.dart';
 import 'Expert_register2.dart';
 
 class ExpertRegister1Screen extends StatefulWidget {
@@ -274,7 +273,6 @@ class _ExpertRegister1ScreenState extends State<ExpertRegister1Screen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),

@@ -16,17 +16,19 @@
 
 package com.google.mlkit.vision.demo.kotlin
 
+import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
-import android.os.Build.VERSION
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import android.util.Log
 import android.util.Pair
 import android.view.MenuItem
@@ -45,25 +47,9 @@ import com.google.mlkit.vision.demo.BitmapUtils
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.R
 import com.google.mlkit.vision.demo.VisionImageProcessor
-import com.google.mlkit.vision.demo.kotlin.barcodescanner.BarcodeScannerProcessor
-import com.google.mlkit.vision.demo.kotlin.facedetector.FaceDetectorProcessor
-import com.google.mlkit.vision.demo.kotlin.facemeshdetector.FaceMeshDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.labeldetector.LabelDetectorProcessor
-import com.google.mlkit.vision.demo.kotlin.objectdetector.ObjectDetectorProcessor
-import com.google.mlkit.vision.demo.kotlin.posedetector.PoseDetectorProcessor
-import com.google.mlkit.vision.demo.kotlin.segmenter.SegmenterProcessor
-import com.google.mlkit.vision.demo.kotlin.subjectsegmenter.SubjectSegmenterProcessor
-import com.google.mlkit.vision.demo.kotlin.textdetector.TextRecognitionProcessor
-import com.google.mlkit.vision.demo.preference.PreferenceUtils
-import com.google.mlkit.vision.demo.preference.SettingsActivity
-import com.google.mlkit.vision.demo.preference.SettingsActivity.LaunchSource
 import com.google.mlkit.vision.label.custom.CustomImageLabelerOptions
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.IOException
 import java.util.ArrayList
 
@@ -81,26 +67,33 @@ class StillImageActivity : AppCompatActivity() {
   // Max height (portrait mode)
   private var imageMaxHeight = 0
   private var imageProcessor: VisionImageProcessor? = null
+  private var lastDetectedLabel: String? = null
+  private var lastDetectedConfidence: Float = 0f
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_still_image)
-    findViewById<View>(R.id.select_image_button).setOnClickListener { view: View ->
-      // Menu for selecting either: a) take new photo b) select from existing
+    findViewById<View>(R.id.select_image_button).setOnClickListener { view ->
       val popup = PopupMenu(this@StillImageActivity, view)
       popup.setOnMenuItemClickListener { menuItem: MenuItem ->
-        val itemId = menuItem.itemId
-        if (itemId == R.id.select_images_from_local) {
-          startChooseImageIntentForResult()
-          return@setOnMenuItemClickListener true
-        } else if (itemId == R.id.take_photo_using_camera) {
-          startCameraIntentForResult()
-          return@setOnMenuItemClickListener true
+        when (menuItem.itemId) {
+          R.id.select_images_from_local -> {
+            startChooseImageIntentForResult()
+            true
+          }
+          R.id.take_photo_using_camera -> {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+              startCameraIntentForResult()
+            } else {
+              ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+            }
+            true
+          }
+          else -> false
         }
-        false
       }
-      val inflater = popup.menuInflater
-      inflater.inflate(R.menu.camera_button_menu, popup.menu)
+      popup.menuInflater.inflate(R.menu.camera_button_menu, popup.menu)
       popup.show()
     }
     preview = findViewById(R.id.preview)
@@ -111,10 +104,22 @@ class StillImageActivity : AppCompatActivity() {
       findViewById<View>(R.id.select_image_button).performClick()
     }
 
-    // 직접 입력하기 버튼 클릭 시 ManualInputActivity로 이동
+    // AI 분석하기 버튼 — MLKit 결과를 Flutter로 전달하고 화면 종료
     findViewById<View>(R.id.manual_input_button).setOnClickListener {
-        val intent = Intent(this, ManualInputActivity::class.java)
-        startActivity(intent)
+      val label = lastDetectedLabel
+      if (label == null) {
+        Toast.makeText(this, "먼저 이미지를 선택해주세요", Toast.LENGTH_SHORT).show()
+        return@setOnClickListener
+      }
+      sendResultToFlutter(label, lastDetectedConfidence)
+    }
+
+    // 직접 입력하기 버튼 — ManualInputActivity로 이동
+    findViewById<View>(R.id.direct_input_button).setOnClickListener {
+      startActivityForResult(
+        Intent(this, ManualInputActivity::class.java),
+        REQUEST_MANUAL_INPUT
+      )
     }
 
     populateFeatureSelector()
@@ -141,12 +146,7 @@ class StillImageActivity : AppCompatActivity() {
       }
     )
 
-    val settingsButton = findViewById<ImageView>(R.id.settings_button)
-    settingsButton.setOnClickListener {
-      val intent = Intent(applicationContext, SettingsActivity::class.java)
-      intent.putExtra(SettingsActivity.EXTRA_LAUNCH_SOURCE, LaunchSource.STILL_IMAGE)
-      startActivity(intent)
-    }
+    // Settings button removed
   }
 
   public override fun onResume() {
@@ -169,25 +169,8 @@ class StillImageActivity : AppCompatActivity() {
   private fun populateFeatureSelector() {
     val featureSpinner = findViewById<Spinner>(R.id.feature_selector)
     val options: MutableList<String> = ArrayList()
-    options.add(OBJECT_DETECTION)
-    options.add(OBJECT_DETECTION_CUSTOM)
-    options.add(CUSTOM_AUTOML_OBJECT_DETECTION)
-    options.add(FACE_DETECTION)
-    options.add(BARCODE_SCANNING)
     options.add(IMAGE_LABELING)
     options.add(IMAGE_LABELING_CUSTOM)
-    options.add(CUSTOM_AUTOML_LABELING)
-    options.add(POSE_DETECTION)
-    options.add(SELFIE_SEGMENTATION)
-    options.add(TEXT_RECOGNITION_LATIN)
-    options.add(TEXT_RECOGNITION_CHINESE)
-    options.add(TEXT_RECOGNITION_DEVANAGARI)
-    options.add(TEXT_RECOGNITION_JAPANESE)
-    options.add(TEXT_RECOGNITION_KOREAN)
-    options.add(FACE_MESH_DETECTION)
-    if (VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      options.add(SUBJECT_SEGMENTATION)
-    }
 
     // Creating adapter for featureSpinner
     val dataAdapter = ArrayAdapter(this, R.layout.spinner_style, options)
@@ -280,16 +263,54 @@ class StillImageActivity : AppCompatActivity() {
     startActivityForResult(Intent.createChooser(intent, "Select Picture"), REQUEST_CHOOSE_IMAGE)
   }
 
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (requestCode == REQUEST_CAMERA_PERMISSION) {
+      if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        startCameraIntentForResult()
+      } else {
+        Toast.makeText(this, "카메라 권한이 필요합니다", Toast.LENGTH_SHORT).show()
+      }
+    }
+  }
+
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
       tryReloadAndDetectInImage()
     } else if (requestCode == REQUEST_CHOOSE_IMAGE && resultCode == Activity.RESULT_OK) {
-      // In this case, imageUri is returned by the chooser, save it.
       imageUri = data!!.data
       tryReloadAndDetectInImage()
+    } else if (requestCode == REQUEST_MANUAL_INPUT && resultCode == Activity.RESULT_OK && data != null) {
+      val label = data.getStringExtra("label") ?: return
+      val confidence = data.getFloatExtra("confidence", 1.0f)
+      sendResultToFlutter(label, confidence)
     } else {
       super.onActivityResult(requestCode, resultCode, data)
     }
+  }
+
+  private fun sendResultToFlutter(label: String, confidence: Float) {
+    // imageUri를 임시 파일로 복사해서 실제 경로 전달
+    val imagePath: String = try {
+      val uri = imageUri
+      if (uri != null) {
+        val inputStream = contentResolver.openInputStream(uri)
+        val tempFile = java.io.File(cacheDir, "mlkit_result.jpg")
+        inputStream?.use { input ->
+          tempFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        tempFile.absolutePath
+      } else ""
+    } catch (e: Exception) {
+      ""
+    }
+    val resultIntent = Intent().apply {
+      putExtra("label", label)
+      putExtra("confidence", confidence)
+      putExtra("imagePath", imagePath)
+    }
+    setResult(Activity.RESULT_OK, resultIntent)
+    finish()
   }
 
   private fun tryReloadAndDetectInImage() {
@@ -379,144 +400,44 @@ class StillImageActivity : AppCompatActivity() {
   private fun createImageProcessor() {
     try {
       when (selectedMode) {
-        OBJECT_DETECTION -> {
-          Log.i(TAG, "Using Object Detector Processor")
-          val objectDetectorOptions = PreferenceUtils.getObjectDetectorOptionsForStillImage(this)
-          imageProcessor = ObjectDetectorProcessor(this, objectDetectorOptions)
-        }
-        OBJECT_DETECTION_CUSTOM -> {
-          Log.i(TAG, "Using Custom Object Detector Processor")
-          val localModel =
-            LocalModel.Builder().setAssetFilePath("model.tflite").build()
-          val customObjectDetectorOptions =
-            PreferenceUtils.getCustomObjectDetectorOptionsForStillImage(this, localModel)
-          imageProcessor = ObjectDetectorProcessor(this, customObjectDetectorOptions)
-        }
-        CUSTOM_AUTOML_OBJECT_DETECTION -> {
-          Log.i(TAG, "Using Custom AutoML Object Detector Processor")
-          val customAutoMLODTLocalModel =
-            LocalModel.Builder().setAssetManifestFilePath("automl/manifest.json").build()
-          val customAutoMLODTOptions =
-            PreferenceUtils.getCustomObjectDetectorOptionsForStillImage(
-              this,
-              customAutoMLODTLocalModel
-            )
-          imageProcessor = ObjectDetectorProcessor(this, customAutoMLODTOptions)
-        }
-        FACE_DETECTION -> {
-          Log.i(TAG, "Using Face Detector Processor")
-          val faceDetectorOptions = PreferenceUtils.getFaceDetectorOptions(this)
-          imageProcessor = FaceDetectorProcessor(this, faceDetectorOptions)
-        }
-        BARCODE_SCANNING -> imageProcessor = BarcodeScannerProcessor(this, zoomCallback = null)
-        TEXT_RECOGNITION_LATIN ->
-          imageProcessor = TextRecognitionProcessor(this, TextRecognizerOptions.Builder().build())
-        TEXT_RECOGNITION_CHINESE ->
-          imageProcessor =
-            TextRecognitionProcessor(this, ChineseTextRecognizerOptions.Builder().build())
-        TEXT_RECOGNITION_DEVANAGARI ->
-          imageProcessor =
-            TextRecognitionProcessor(this, DevanagariTextRecognizerOptions.Builder().build())
-        TEXT_RECOGNITION_JAPANESE ->
-          imageProcessor =
-            TextRecognitionProcessor(this, JapaneseTextRecognizerOptions.Builder().build())
-        TEXT_RECOGNITION_KOREAN ->
-          imageProcessor =
-            TextRecognitionProcessor(this, KoreanTextRecognizerOptions.Builder().build())
         IMAGE_LABELING ->
           imageProcessor = LabelDetectorProcessor(this, ImageLabelerOptions.DEFAULT_OPTIONS)
         IMAGE_LABELING_CUSTOM -> {
           Log.i(TAG, "Using Custom Image Label Detector Processor")
-          val localClassifier =
-            LocalModel.Builder().setAssetFilePath("model.tflite").build()
+          val localClassifier = LocalModel.Builder().setAssetFilePath("model.tflite").build()
           val customImageLabelerOptions = CustomImageLabelerOptions.Builder(localClassifier)
             .setConfidenceThreshold(0.3f)
             .setMaxResultCount(5)
             .build()
-          imageProcessor = LabelDetectorProcessor(this, customImageLabelerOptions)
-        }
-        CUSTOM_AUTOML_LABELING -> {
-          Log.i(TAG, "Using Custom AutoML Image Label Detector Processor")
-          val customAutoMLLabelLocalModel =
-            LocalModel.Builder().setAssetManifestFilePath("automl/manifest.json").build()
-          val customAutoMLLabelOptions =
-            CustomImageLabelerOptions.Builder(customAutoMLLabelLocalModel)
-              .setConfidenceThreshold(0f)
-              .build()
-          imageProcessor = LabelDetectorProcessor(this, customAutoMLLabelOptions)
-        }
-        POSE_DETECTION -> {
-          val poseDetectorOptions = PreferenceUtils.getPoseDetectorOptionsForStillImage(this)
-          Log.i(TAG, "Using Pose Detector with options $poseDetectorOptions")
-          val shouldShowInFrameLikelihood =
-            PreferenceUtils.shouldShowPoseDetectionInFrameLikelihoodStillImage(this)
-          val visualizeZ = PreferenceUtils.shouldPoseDetectionVisualizeZ(this)
-          val rescaleZ = PreferenceUtils.shouldPoseDetectionRescaleZForVisualization(this)
-          val runClassification = PreferenceUtils.shouldPoseDetectionRunClassification(this)
-          imageProcessor =
-            PoseDetectorProcessor(
-              this,
-              poseDetectorOptions,
-              shouldShowInFrameLikelihood,
-              visualizeZ,
-              rescaleZ,
-              runClassification,
-              isStreamMode = false
-            )
-        }
-        SELFIE_SEGMENTATION -> {
-          imageProcessor = SegmenterProcessor(this, isStreamMode = false)
-        }
-        FACE_MESH_DETECTION -> {
-          imageProcessor = FaceMeshDetectorProcessor(this)
-        }
-        SUBJECT_SEGMENTATION -> {
-          if (VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            imageProcessor = SubjectSegmenterProcessor(this)
+          imageProcessor = LabelDetectorProcessor(this, customImageLabelerOptions) { label, confidence ->
+            lastDetectedLabel = label
+            lastDetectedConfidence = confidence
           }
         }
         else -> Log.e(TAG, "Unknown selectedMode: $selectedMode")
       }
     } catch (e: Exception) {
       Log.e(TAG, "Can not create image processor: $selectedMode", e)
-      Toast.makeText(
-          applicationContext,
-          "Can not create image processor: " + e.message,
-          Toast.LENGTH_LONG
-        )
-        .show()
+      Toast.makeText(applicationContext, "Can not create image processor: " + e.message, Toast.LENGTH_LONG).show()
     }
   }
 
   companion object {
     private const val TAG = "StillImageActivity"
-    private const val OBJECT_DETECTION = "Object Detection"
-    private const val OBJECT_DETECTION_CUSTOM = "Custom Object Detection"
-    private const val CUSTOM_AUTOML_OBJECT_DETECTION = "Custom AutoML Object Detection (Flower)"
-    private const val FACE_DETECTION = "Face Detection"
-    private const val BARCODE_SCANNING = "Barcode Scanning"
-    private const val TEXT_RECOGNITION_LATIN = "Text Recognition Latin"
-    private const val TEXT_RECOGNITION_CHINESE = "Text Recognition Chinese"
-    private const val TEXT_RECOGNITION_DEVANAGARI = "Text Recognition Devanagari"
-    private const val TEXT_RECOGNITION_JAPANESE = "Text Recognition Japanese"
-    private const val TEXT_RECOGNITION_KOREAN = "Text Recognition Korean"
     private const val IMAGE_LABELING = "Image Labeling"
     private const val IMAGE_LABELING_CUSTOM = "Custom Image Labeling (Birds)"
-    private const val CUSTOM_AUTOML_LABELING = "Custom AutoML Image Labeling (Flower)"
-    private const val POSE_DETECTION = "Pose Detection"
-    private const val SELFIE_SEGMENTATION = "Selfie Segmentation"
-    private const val FACE_MESH_DETECTION = "Face Mesh Detection (Beta)"
-    private const val SUBJECT_SEGMENTATION = "Subject Segmentation (Beta)"
 
-    private const val SIZE_SCREEN = "w:screen" // Match screen width
-    private const val SIZE_1024_768 = "w:1024" // ~1024*768 in a normal ratio
-    private const val SIZE_640_480 = "w:640" // ~640*480 in a normal ratio
-    private const val SIZE_ORIGINAL = "w:original" // Original image size
+    private const val SIZE_SCREEN = "w:screen"
+    private const val SIZE_1024_768 = "w:1024"
+    private const val SIZE_640_480 = "w:640"
+    private const val SIZE_ORIGINAL = "w:original"
     private const val KEY_IMAGE_URI = "com.google.mlkit.vision.demo.KEY_IMAGE_URI"
     private const val KEY_IMAGE_MAX_WIDTH = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_WIDTH"
     private const val KEY_IMAGE_MAX_HEIGHT = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_HEIGHT"
     private const val KEY_SELECTED_SIZE = "com.google.mlkit.vision.demo.KEY_SELECTED_SIZE"
     private const val REQUEST_IMAGE_CAPTURE = 1001
     private const val REQUEST_CHOOSE_IMAGE = 1002
+    private const val REQUEST_CAMERA_PERMISSION = 1003
+    private const val REQUEST_MANUAL_INPUT = 1004
   }
 }

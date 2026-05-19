@@ -1,232 +1,217 @@
 import 'package:flutter/material.dart';
+import '../models/analysis_model.dart';
 
 class SmartDisposalSolutionScreen extends StatelessWidget {
-  const SmartDisposalSolutionScreen({super.key});
+  final AnalysisResult result;
+
+  const SmartDisposalSolutionScreen({super.key, required this.result});
+
+  /// "1. ...\n2. ..." 또는 "step1: ..." 형태의 배출 방법을 줄 단위로 파싱
+  List<String> _parseDisposalSteps(String? method) {
+    if (method == null || method.trim().isEmpty) return [];
+    return method
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final steps = _parseDisposalSteps(result.disposalMethod);
+    final icon = result.disposalIcon ?? '🗑️';
+
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: Container(
-                width: double.infinity,
-                color: const Color(0xFFD9EACD),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 18),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            icon: const Icon(
-                              Icons.arrow_back_ios_new,
-                              color: Color(0xFF1F402C),
-                              size: 24,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '스마트 배출 솔루션',
-                            style: TextStyle(
-                              fontFamily: 'RebornFont',
-                              fontSize: 24,
-                              color: Color(0xFF1F402C),
-                            ),
-                          ),
-                        ],
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_ios_new,
+                              color: Color(0xFF1F402C), size: 24),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('스마트 배출 솔루션',
+                            style: TextStyle(fontFamily: 'RebornFont',
+                                fontSize: 24, color: Color(0xFF1F402C))),
+                      ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 54, top: 4),
-                      child: Text(
-                        '물건을 촬영하면 업사이클링 가능 여부를 분석해줘요!',
-                        style: TextStyle(
-                          fontFamily: 'RebornFont',
-                          fontSize: 13,
-                          color: Color(0xFF33543C),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 54, top: 4),
+                    child: Text(
+                      'AI가 분석한 올바른 배출 방법이에요!',
+                      style: TextStyle(fontFamily: 'RebornFont', fontSize: 13,
+                          color: Color(0xFF33543C)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF8FAED),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(34),
+                          topRight: Radius.circular(34),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF8FAED),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(34),
-                            topRight: Radius.circular(34),
-                          ),
-                        ),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(16, 28, 16, 24),
-                          child: Column(
-                            children: [
-                              _sectionCard(
-                                child: const Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '분석 결과',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 22,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      '재질 : 데님',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 15,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '상태 분석 결과 : 오염도 심함',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 15,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '업사이클링 가능 여부 : 나빠요..',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 15,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 28, 16, 24),
+                        child: Column(
+                          children: [
+                            // 1. 분석 결과 카드
+                            _sectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(icon,
+                                          style: const TextStyle(fontSize: 28)),
+                                      const SizedBox(width: 10),
+                                      const Text('분석 결과',
+                                          style: TextStyle(
+                                              fontFamily: 'RebornFont',
+                                              fontSize: 22,
+                                              color: Color(0xFF1F402C))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _row('재질', result.materialType),
+                                  if (result.conditionGrade != null) ...[
+                                    const SizedBox(height: 8),
+                                    _row('상태 등급', _conditionLabel(result.conditionGrade!)),
                                   ],
-                                ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Text('업사이클링 여부 : ',
+                                          style: TextStyle(
+                                              fontFamily: 'RebornFont',
+                                              fontSize: 15,
+                                              color: Color(0xFF6E8B64))),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFE0E0),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Text('어려워요 😢',
+                                            style: TextStyle(
+                                                fontFamily: 'RebornFont',
+                                                fontSize: 13,
+                                                color: Color(0xFFB03030))),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 14),
-                              _sectionCard(
-                                child: const Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '⚠️ 배출 전 체크리스트:',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 16,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    Text(
-                                      '1. 오염확인 : 페인트, 기름 음식물 등으로 심하게 오염된 의류는 재활용이 불가능합니다.',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 14,
-                                        height: 1.45,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '2. 부속품 제거 : 금속단추나 플라스틱 지퍼가 있다면 분리하여 배출하는 것이 좋습니다.',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 14,
-                                        height: 1.45,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '3. 배출방법 : 이 옷은 재사용이 어렵기 때문에 종량제 봉투에 담아 배출해주세요.',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 14,
-                                        height: 1.45,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              _sectionCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                            ),
+                            const SizedBox(height: 14),
+
+                            // 2. 배출 방법 카드
+                            _sectionCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('⚠️ 올바른 배출 방법',
+                                      style: TextStyle(fontFamily: 'RebornFont',
+                                          fontSize: 18, color: Color(0xFF1F402C))),
+                                  const SizedBox(height: 12),
+                                  if (steps.isEmpty)
                                     const Text(
-                                      '내 주변 배출 장소',
-                                      style: TextStyle(
-                                        fontFamily: 'RebornFont',
-                                        fontSize: 22,
-                                        color: Color(0xFF1F402C),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    _placeItem(
-                                      name: '서울시 재활용 센터',
-                                      distance: '0.5KM',
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _placeItem(
-                                      name: '헌옷 수거함',
-                                      distance: '0.7KM',
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _placeItem(
-                                      name: '헌옷 수거함',
-                                      distance: '0.7KM',
-                                    ),
-                                  ],
-                                ),
+                                      '해당 재질의 분리배출 방법을 확인 후 배출해주세요.',
+                                      style: TextStyle(fontFamily: 'RebornFont',
+                                          fontSize: 14, color: Color(0xFF1F402C),
+                                          height: 1.5),
+                                    )
+                                  else
+                                    ...steps.asMap().entries.map((e) {
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                            bottom: e.key < steps.length - 1 ? 10 : 0),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              width: 24,
+                                              height: 24,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF5C8A76),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Text('${e.key + 1}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontFamily: 'RebornFont',
+                                                        fontSize: 12)),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(top: 3),
+                                                child: Text(e.value,
+                                                    style: const TextStyle(
+                                                        fontFamily: 'RebornFont',
+                                                        fontSize: 14,
+                                                        color: Color(0xFF1F402C),
+                                                        height: 1.45)),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                ],
                               ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 54,
-                                child: ElevatedButton(
-                                  onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF87A676),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      side: const BorderSide(
-                                        color: Color(0xFF6E8B64),
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    '스마트 배출 확인',
-                                    style: TextStyle(
-                                      fontFamily: 'RebornFont',
-                                      fontSize: 20,
-                                      color: Colors.white,
-                                    ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // 스마트 배출 확인 버튼
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5C8A76),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    side: const BorderSide(
+                                        color: Color(0xFF3E6B58), width: 1),
                                   ),
                                 ),
+                                child: const Text('✅ 배출 완료',
+                                    style: TextStyle(fontFamily: 'RebornFont',
+                                        fontSize: 20, color: Colors.white)),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             Container(
@@ -238,72 +223,40 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class _SectionCard extends StatelessWidget {
-  final Widget child;
-
-  const _SectionCard({
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _sectionCard({required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F7F7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF3E5C45),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF3E5C45), width: 1),
       ),
       child: child,
     );
   }
-}
 
-Widget _sectionCard({required Widget child}) {
-  return _SectionCard(child: child);
-}
-
-Widget _placeItem({
-  required String name,
-  required String distance,
-}) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEFEFDF),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: const Color(0xFF6E8B64),
-        width: 1,
+  Widget _row(String label, String value) {
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontFamily: 'RebornFont', fontSize: 15,
+            color: Color(0xFF1F402C)),
+        children: [
+          TextSpan(text: '$label : ',
+              style: const TextStyle(color: Color(0xFF6E8B64))),
+          TextSpan(text: value),
+        ],
       ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          name,
-          style: const TextStyle(
-            fontFamily: 'RebornFont',
-            fontSize: 15,
-            color: Color(0xFF1F402C),
-          ),
-        ),
-        Text(
-          distance,
-          style: const TextStyle(
-            fontFamily: 'RebornFont',
-            fontSize: 15,
-            color: Color(0xFF1F402C),
-          ),
-        ),
-      ],
-    ),
-  );
+    );
+  }
+
+  String _conditionLabel(String grade) {
+    switch (grade.toUpperCase()) {
+      case 'A': return 'A등급 (상태 양호)';
+      case 'B': return 'B등급 (보통)';
+      case 'C': return 'C등급 (상태 불량)';
+      default:  return grade;
+    }
+  }
 }

@@ -1,37 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/auth_storage.dart';
+import '../services/member_service.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../core/constants/level_constants.dart';
 
-const List<int> _levelThresholds = [
-  0, 50, 110, 180, 260, 360, 470, 590, 720, 870,
-  1000, 1150, 1350, 1500, 1700, 1950, 2150, 2350, 2550, 2750,
-  2950, 3150, 3350, 3550, 3750, 3950, 4150, 4350, 4500, 5000,
-  5600, 5800, 6000, 6200, 6400, 6600, 6800, 7000, 7200, 7400,
-  7600, 7800, 8000, 8200, 8400, 8600, 8800, 9000, 9200, 10000,
-];
-
-String _getTitleForLevel(int level) {
-  if (level >= 50) return '지구 수호자';
-  if (level >= 31) return '에코 마스터';
-  if (level >= 16) return '프로 환경러';
-  if (level >= 6) return '주니어 리포머';
-  return '새싹 지구 지킴이';
-}
-
-String _getTitleEmoji(String title) {
-  switch (title) {
-    case '주니어 리포머':   return '♻️';
-    case '프로 환경러':     return '🌿';
-    case '에코 마스터':     return '🌍';
-    case '지구 수호자':     return '🏆';
-    case '맥가이버':        return '⚒️';
-    case '패션 아이콘':     return '🏆';
-    case '공방 단골손님':   return '🤝';
-    case '분리배출의 신':   return '📍';
-    default:               return '🌱';
-  }
-}
 
 void _showGamificationSheet(BuildContext context) {
   showModalBottomSheet(
@@ -214,7 +187,22 @@ class _MainPageScreenState extends State<MainPageScreen> {
   @override
   void initState() {
     super.initState();
+    _loadProfile();
     _loadTip();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await MemberService().getMyProfile();
+      final storage = AuthStorage();
+      storage.nickname = profile.nickname;
+      storage.totalXp = profile.totalXp;
+      storage.currentLevel = profile.currentLevel;
+      await storage.save();
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('프로필 로드 실패: $e');
+    }
   }
 
   Future<void> _loadTip() async {
@@ -233,11 +221,11 @@ class _MainPageScreenState extends State<MainPageScreen> {
     final totalXp = storage.totalXp;
     final currentLevel = storage.currentLevel;
 
-    final idx = (currentLevel - 1).clamp(0, _levelThresholds.length - 2);
-    final xpInLevel = totalXp - _levelThresholds[idx];
-    final xpNeeded = _levelThresholds[idx + 1] - _levelThresholds[idx];
+    final idx = (currentLevel - 1).clamp(0, levelThresholds.length - 2);
+    final xpInLevel = totalXp - levelThresholds[idx];
+    final xpNeeded = levelThresholds[idx + 1] - levelThresholds[idx];
     final xpProgress = (xpInLevel / xpNeeded).clamp(0.0, 1.0);
-    final titleName = _getTitleForLevel(currentLevel);
+    final titleName = getTitleForLevel(currentLevel);
 
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
@@ -286,7 +274,7 @@ class _MainPageScreenState extends State<MainPageScreen> {
                             Row(
                               children: [
                                 Text(
-                                  _getTitleEmoji(titleName),
+                                  getTitleEmoji(titleName),
                                   style: const TextStyle(fontSize: 16),
                                 ),
                                 const SizedBox(width: 4),

@@ -43,6 +43,8 @@ class ExpertService {
     required String category,
     required String introduction,
     String? imageUrl,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       await _dio.post('/api/v1/experts/register', data: {
@@ -55,6 +57,8 @@ class ExpertService {
         'category': category,
         'introduction': introduction,
         'imageUrl': imageUrl,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       });
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;
@@ -101,6 +105,8 @@ class ExpertService {
     required String category,
     required String introduction,
     String? imageUrl,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       await _dio.put('/api/v1/experts/my-info', data: {
@@ -113,6 +119,8 @@ class ExpertService {
         'category': category,
         'introduction': introduction,
         'imageUrl': imageUrl,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       });
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;

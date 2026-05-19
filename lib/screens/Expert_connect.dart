@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../services/expert_service.dart';
 import '../services/reform_request_service.dart';
@@ -19,6 +21,7 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
   bool _isLoading = true;
   String? _error;
   String _selectedCategory = '전체';
+  bool _isMapView = false;
 
   final List<String> _categories = ['전체', '의류', '목재/가구', '금속', '플라스틱', '유리', '액세서리', '전자제품', '기타'];
 
@@ -214,6 +217,72 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
+                            // 목록 / 지도 토글
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _isMapView = false),
+                                    child: Container(
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: !_isMapView
+                                            ? const Color(0xFF87A676)
+                                            : Colors.white,
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(10),
+                                          bottomLeft: Radius.circular(10),
+                                        ),
+                                        border: Border.all(color: const Color(0xFF87A676)),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '목록',
+                                          style: TextStyle(
+                                            fontFamily: 'RebornFont',
+                                            fontSize: 14,
+                                            color: !_isMapView
+                                                ? Colors.white
+                                                : const Color(0xFF87A676),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _isMapView = true),
+                                    child: Container(
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: _isMapView
+                                            ? const Color(0xFF87A676)
+                                            : Colors.white,
+                                        borderRadius: const BorderRadius.only(
+                                          topRight: Radius.circular(10),
+                                          bottomRight: Radius.circular(10),
+                                        ),
+                                        border: Border.all(color: const Color(0xFF87A676)),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '지도',
+                                          style: TextStyle(
+                                            fontFamily: 'RebornFont',
+                                            fontSize: 14,
+                                            color: _isMapView
+                                                ? Colors.white
+                                                : const Color(0xFF87A676),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
                             Expanded(
                               child: _isLoading
                                   ? const Center(
@@ -259,35 +328,36 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
                                             ],
                                           ),
                                         )
-                                      : _filtered.isEmpty
-                                          ? const Center(
-                                              child: Text(
-                                                '등록된 전문가가 없어요',
-                                                style: TextStyle(
-                                                  fontFamily: 'RebornFont',
-                                                  fontSize: 15,
-                                                  color: Color(0xFF6E7B6E),
+                                      : _isMapView
+                                          ? _buildMapView()
+                                          : _filtered.isEmpty
+                                              ? const Center(
+                                                  child: Text(
+                                                    '등록된 전문가가 없어요',
+                                                    style: TextStyle(
+                                                      fontFamily: 'RebornFont',
+                                                      fontSize: 15,
+                                                      color: Color(0xFF6E7B6E),
+                                                    ),
+                                                  ),
+                                                )
+                                              : RefreshIndicator(
+                                                  color: const Color(0xFF87A676),
+                                                  onRefresh: _loadExperts,
+                                                  child: ListView.separated(
+                                                    itemCount: _filtered.length,
+                                                    separatorBuilder: (_, __) =>
+                                                        const SizedBox(height: 14),
+                                                    padding: const EdgeInsets.only(bottom: 20),
+                                                    itemBuilder: (context, index) {
+                                                      final expert = _filtered[index];
+                                                      return _WorkshopCard(
+                                                        expert: expert,
+                                                        onInquiryTap: () => _onInquiryTap(expert),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
-                                              ),
-                                            )
-                                          : RefreshIndicator(
-                                              color: const Color(0xFF87A676),
-                                              onRefresh: _loadExperts,
-                                              child: ListView.separated(
-                                                itemCount: _filtered.length,
-                                                separatorBuilder: (_, __) =>
-                                                    const SizedBox(height: 14),
-                                                padding:
-                                                    const EdgeInsets.only(bottom: 20),
-                                                itemBuilder: (context, index) {
-                                                  final expert = _filtered[index];
-                                                  return _WorkshopCard(
-                                                    expert: expert,
-                                                    onInquiryTap: () => _onInquiryTap(expert),
-                                                  );
-                                                },
-                                              ),
-                                            ),
                             ),
                           ],
                         ),
@@ -300,6 +370,96 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
             const BottomNavBar(selectedIndex: 3),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMapView() {
+    final mapExperts = _filtered
+        .where((e) => e['latitude'] != null && e['longitude'] != null)
+        .toList();
+
+    // 지도 표시 가능한 전문가가 없으면 안내 문구
+    if (mapExperts.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('🗺️', style: TextStyle(fontSize: 40)),
+            SizedBox(height: 12),
+            Text(
+              '지도에 표시할 전문가가 없어요\n전문가가 위치를 등록하면 표시됩니다',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'RebornFont',
+                fontSize: 14,
+                color: Color(0xFF6E7B6E),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 첫 번째 전문가 위치를 중심으로 설정
+    final firstLat = (mapExperts.first['latitude'] as num).toDouble();
+    final firstLon = (mapExperts.first['longitude'] as num).toDouble();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: LatLng(firstLat, firstLon),
+          initialZoom: 13,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.jimmy.reborn.reborn_fe',
+          ),
+          MarkerLayer(
+            markers: mapExperts.map((expert) {
+              final lat = (expert['latitude'] as num).toDouble();
+              final lon = (expert['longitude'] as num).toDouble();
+              return Marker(
+                point: LatLng(lat, lon),
+                width: 44,
+                height: 44,
+                child: GestureDetector(
+                  onTap: () => _showInquiryBottomSheet(context, expert),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3E5C45),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          expert['shopName'] ?? '',
+                          style: const TextStyle(
+                            fontFamily: 'RebornFont',
+                            fontSize: 9,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF87A676),
+                        size: 28,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
