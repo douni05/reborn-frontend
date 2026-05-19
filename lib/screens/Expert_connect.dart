@@ -330,8 +330,6 @@ class _WorkshopCard extends StatelessWidget {
     final category = expert['category'] ?? '';
     final address = expert['address'] ?? '';
     final introduction = expert['introduction'] ?? '';
-    final avgRating = (expert['averageRating'] as num?)?.toDouble() ?? 0.0;
-    final reviewCount = (expert['reviewCount'] as num?)?.toInt() ?? 0;
 
     return Container(
       width: double.infinity,
@@ -403,19 +401,7 @@ class _WorkshopCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (avgRating > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 14, color: Color(0xFFF5A623)),
-                      const SizedBox(width: 3),
-                      Text(
-                        '${avgRating.toStringAsFixed(1)} ($reviewCount개)',
-                        style: const TextStyle(fontFamily: 'RebornFont', fontSize: 12, color: Color(0xFF6E7B6E)),
-                      ),
-                    ],
-                  ),
-                ],
+
                 const SizedBox(height: 8),
                 Row(
                   children: [
