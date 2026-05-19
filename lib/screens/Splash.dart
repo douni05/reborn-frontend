@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/storage/auth_storage.dart';
 import 'Login.dart';
-import 'Main_page.dart';
+import '../widgets/app_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => isLoggedIn ? const MainPageScreen() : const LoginScreen(),
+        builder: (_) => isLoggedIn ? const AppShell() : const LoginScreen(),
       ),
     );
   }

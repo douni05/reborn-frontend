@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'Signup.dart';
-import 'Main_page.dart';
+import '../widgets/app_shell.dart';
 import '../services/member_service.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _goToMain(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const MainPageScreen()),
+      MaterialPageRoute(builder: (context) => const AppShell()),
       (route) => false,
     );
   }

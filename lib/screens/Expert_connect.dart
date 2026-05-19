@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../services/expert_service.dart';
 import '../services/reform_request_service.dart';
 
@@ -367,7 +366,6 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
                 ],
               ),
             ),
-            const BottomNavBar(selectedIndex: 3),
           ],
         ),
       ),
@@ -991,11 +989,7 @@ class _DesignSelectSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = [
-      '솔루션 받은 리폼 디자인을 선택하세요.',
-      '청바지로 나만의 개성있는 가방 만들기',
-      '병뚜껑으로 나만의 귀여운 키링 만들기',
-    ];
+    final options = ['솔루션 받은 리폼 디자인을 선택하세요.'];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../screens/Main_page.dart';
@@ -9,16 +8,24 @@ import '../screens/AI_camera_result.dart';
 
 /// 앱 공통 하단 네비게이션 바
 /// [selectedIndex] 0=홈, 1=리폼하기, 2=중앙버튼, 3=전문가연결, 4=마이페이지
+/// [onTabChanged] AppShell에서 IndexedStack 탭 전환 시 사용
 class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
+  final ValueChanged<int>? onTabChanged;
 
   static const _mlkitChannel = MethodChannel('com.jimmy.reborn.reborn_fe/mlkit');
 
-  const BottomNavBar({super.key, this.selectedIndex = 0});
+  const BottomNavBar({super.key, this.selectedIndex = 0, this.onTabChanged});
 
   void _onItemTapped(BuildContext context, int index) {
     if (index == selectedIndex) return;
 
+    if (onTabChanged != null) {
+      onTabChanged!(index);
+      return;
+    }
+
+    // 서브페이지에서 사용할 때 (AppShell 밖) — 기존 방식 유지
     Widget page;
     switch (index) {
       case 0:
@@ -94,7 +101,7 @@ class BottomNavBar extends StatelessWidget {
                 onTap: () async {
                   try {
                     final result = await _mlkitChannel.invokeMethod<Map>('launchMLKit');
-                    if (result == null) return; // 사용자가 뒤로 나간 경우
+                    if (result == null) return;
                     final label = result['label'] as String? ?? '';
                     final confidence = (result['confidence'] as num?)?.toDouble() ?? 0.0;
                     final imagePath = result['imagePath'] as String? ?? '';
@@ -111,7 +118,13 @@ class BottomNavBar extends StatelessWidget {
                         ),
                       );
                     }
-                  } on PlatformException catch (_) {}
+                  } on PlatformException catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('카메라 실행 실패: ${e.message ?? e.code}')),
+                      );
+                    }
+                  }
                 },
                 child: Container(
                   width: 68,

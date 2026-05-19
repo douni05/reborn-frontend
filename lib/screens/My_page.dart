@@ -4,7 +4,6 @@ import '../core/user_session.dart';
 import '../models/member_model.dart';
 import '../services/member_service.dart';
 import '../services/expert_service.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../core/constants/level_constants.dart';
 import 'Login.dart';
 import 'Reform_history.dart';
@@ -310,9 +309,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
                         return GestureDetector(
                           onTap: unlocked
-                              ? () {
+                              ? () async {
                                   setState(() => _selectedTitle = name);
                                   Navigator.pop(context);
+                                  try {
+                                    await _memberService.updateTitle(name);
+                                  } catch (e) {
+                                    debugPrint('[MyPage] 칭호 변경 실패: $e');
+                                  }
                                 }
                               : null,
                           child: Container(
@@ -579,7 +583,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),

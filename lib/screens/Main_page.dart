@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/auth_storage.dart';
 import '../services/member_service.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../core/constants/level_constants.dart';
 
 
@@ -211,7 +210,9 @@ class _MainPageScreenState extends State<MainPageScreen> {
       final response = await dio.get('/api/v1/tips/today');
       if (!mounted) return;
       setState(() => _tip = response.data['tip'] as String?);
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _tip = '오늘도 환경을 위한 작은 실천을 해보세요 🌱');
+    }
   }
 
   @override
@@ -467,7 +468,6 @@ class _MainPageScreenState extends State<MainPageScreen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 0),
           ],
         ),
       ),

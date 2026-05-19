@@ -17,7 +17,6 @@
 package com.google.mlkit.vision.demo.kotlin
 
 import android.Manifest
-import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -26,6 +25,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -69,6 +69,33 @@ class StillImageActivity : AppCompatActivity() {
   private var imageProcessor: VisionImageProcessor? = null
   private var lastDetectedLabel: String? = null
   private var lastDetectedConfidence: Float = 0f
+
+  private val takePictureLauncher = registerForActivityResult(
+      ActivityResultContracts.StartActivityForResult()
+  ) { result ->
+      if (result.resultCode == android.app.Activity.RESULT_OK) {
+          tryReloadAndDetectInImage()
+      }
+  }
+
+  private val pickImageLauncher = registerForActivityResult(
+      ActivityResultContracts.StartActivityForResult()
+  ) { result ->
+      if (result.resultCode == android.app.Activity.RESULT_OK) {
+          imageUri = result.data?.data
+          tryReloadAndDetectInImage()
+      }
+  }
+
+  private val manualInputLauncher = registerForActivityResult(
+      ActivityResultContracts.StartActivityForResult()
+  ) { result ->
+      if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
+          val label = result.data!!.getStringExtra("label") ?: return@registerForActivityResult
+          val confidence = result.data!!.getFloatExtra("confidence", 1.0f)
+          sendResultToFlutter(label, confidence)
+      }
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -116,10 +143,7 @@ class StillImageActivity : AppCompatActivity() {
 
     // 직접 입력하기 버튼 — ManualInputActivity로 이동
     findViewById<View>(R.id.direct_input_button).setOnClickListener {
-      startActivityForResult(
-        Intent(this, ManualInputActivity::class.java),
-        REQUEST_MANUAL_INPUT
-      )
+      manualInputLauncher.launch(Intent(this, ManualInputActivity::class.java))
     }
 
     populateFeatureSelector()
@@ -252,7 +276,7 @@ class StillImageActivity : AppCompatActivity() {
       values.put(MediaStore.Images.Media.DESCRIPTION, "From Camera")
       imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
       takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
-      startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+      takePictureLauncher.launch(takePictureIntent)
     }
   }
 
@@ -260,7 +284,7 @@ class StillImageActivity : AppCompatActivity() {
     val intent = Intent()
     intent.type = "image/*"
     intent.action = Intent.ACTION_GET_CONTENT
-    startActivityForResult(Intent.createChooser(intent, "Select Picture"), REQUEST_CHOOSE_IMAGE)
+    pickImageLauncher.launch(Intent.createChooser(intent, "Select Picture"))
   }
 
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
@@ -274,21 +298,6 @@ class StillImageActivity : AppCompatActivity() {
     }
   }
 
-  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-    if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
-      tryReloadAndDetectInImage()
-    } else if (requestCode == REQUEST_CHOOSE_IMAGE && resultCode == Activity.RESULT_OK) {
-      imageUri = data!!.data
-      tryReloadAndDetectInImage()
-    } else if (requestCode == REQUEST_MANUAL_INPUT && resultCode == Activity.RESULT_OK && data != null) {
-      val label = data.getStringExtra("label") ?: return
-      val confidence = data.getFloatExtra("confidence", 1.0f)
-      sendResultToFlutter(label, confidence)
-    } else {
-      super.onActivityResult(requestCode, resultCode, data)
-    }
-  }
-
   private fun sendResultToFlutter(label: String, confidence: Float) {
     // imageUri를 임시 파일로 복사해서 실제 경로 전달
     val imagePath: String = try {
@@ -296,6 +305,7 @@ class StillImageActivity : AppCompatActivity() {
       if (uri != null) {
         val inputStream = contentResolver.openInputStream(uri)
         val tempFile = java.io.File(cacheDir, "mlkit_result.jpg")
+        if (tempFile.exists()) tempFile.delete()
         inputStream?.use { input ->
           tempFile.outputStream().use { output -> input.copyTo(output) }
         }
@@ -435,9 +445,6 @@ class StillImageActivity : AppCompatActivity() {
     private const val KEY_IMAGE_MAX_WIDTH = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_WIDTH"
     private const val KEY_IMAGE_MAX_HEIGHT = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_HEIGHT"
     private const val KEY_SELECTED_SIZE = "com.google.mlkit.vision.demo.KEY_SELECTED_SIZE"
-    private const val REQUEST_IMAGE_CAPTURE = 1001
-    private const val REQUEST_CHOOSE_IMAGE = 1002
     private const val REQUEST_CAMERA_PERMISSION = 1003
-    private const val REQUEST_MANUAL_INPUT = 1004
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../models/analysis_model.dart';
 import '../services/analysis_service.dart';
 import 'camera_screen.dart';
@@ -127,7 +126,6 @@ class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
                 ],
               ),
             ),
-            const BottomNavBar(selectedIndex: 1),
           ],
         ),
       ),

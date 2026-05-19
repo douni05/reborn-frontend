@@ -45,6 +45,18 @@ class MemberService {
     }
   }
 
+  Future<void> updateTitle(String titleName) async {
+    try {
+      await _dio.patch(
+        '/api/v1/members/title',
+        data: {'titleName': titleName},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? '칭호 변경 중 오류가 발생했습니다');
+    }
+  }
+
   Future<void> withdraw() async {
     try {
       await _dio.delete('/api/v1/members/me');

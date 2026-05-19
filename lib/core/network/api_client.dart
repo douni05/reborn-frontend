@@ -1,9 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import '../storage/auth_storage.dart';
+import '../../main.dart';
+import '../../screens/Login.dart';
 
 class ApiClient {
-  static const String _baseUrl = 'http://10.0.2.2:8080';
-  // static const String _baseUrl = 'http://192.168.55.129:8080'; // 실기기용
+  static const String _baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8080',
+  );
 
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
@@ -25,7 +30,17 @@ class ApiClient {
           }
           handler.next(options);
         },
-        onError: (error, handler) {
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401) {
+            await AuthStorage().clear();
+            final ctx = navigatorKey.currentContext;
+            if (ctx != null) {
+              Navigator.of(ctx).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            }
+          }
           handler.next(error);
         },
       ),
