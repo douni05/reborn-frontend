@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/expert_service.dart';
 import '../services/reform_request_service.dart';
+import '../services/analysis_service.dart';
 
 class ExpertConnectScreen extends StatefulWidget {
   const ExpertConnectScreen({super.key});
@@ -667,6 +668,29 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   String selectedDesign = '솔루션 받은 리폼 디자인을 선택하세요.';
   final TextEditingController requestController = TextEditingController();
   bool _isSending = false;
+  List<String> _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDesignOptions();
+  }
+
+  Future<void> _loadDesignOptions() async {
+    try {
+      final history = await AnalysisService().getHistory();
+      final titles = history
+          .where((r) => r.isReformable == true && r.reformTitle != null && r.reformTitle!.isNotEmpty)
+          .map((r) => r.reformTitle!)
+          .toSet()
+          .toList();
+      if (mounted && titles.isNotEmpty) {
+        setState(() {
+          _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.', ...titles];
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -816,6 +840,7 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                                 backgroundColor: Colors.transparent,
                                 builder: (context) => _DesignSelectSheet(
                                   selectedValue: selectedDesign,
+                                  options: _designOptions,
                                 ),
                               );
                               if (result != null) {
@@ -985,11 +1010,11 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
 
 class _DesignSelectSheet extends StatelessWidget {
   final String selectedValue;
-  const _DesignSelectSheet({required this.selectedValue});
+  final List<String> options;
+  const _DesignSelectSheet({required this.selectedValue, required this.options});
 
   @override
   Widget build(BuildContext context) {
-    final options = ['솔루션 받은 리폼 디자인을 선택하세요.'];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
