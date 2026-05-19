@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.kotlin
 
 import android.Manifest
+import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
