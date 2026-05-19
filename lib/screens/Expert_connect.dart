@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/expert_service.dart';
 import '../services/reform_request_service.dart';
 import '../services/analysis_service.dart';
+import '../models/analysis_model.dart';
 
 class ExpertConnectScreen extends StatefulWidget {
   const ExpertConnectScreen({super.key});
@@ -669,6 +670,8 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   final TextEditingController requestController = TextEditingController();
   bool _isSending = false;
   List<String> _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.'];
+  Map<String, AnalysisResult> _resultMap = {};
+  AnalysisResult? _selectedResult;
 
   @override
   void initState() {
@@ -679,13 +682,19 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   Future<void> _loadDesignOptions() async {
     try {
       final history = await AnalysisService().getHistory();
-      final titles = history
-          .where((r) => r.isReformable == true && r.reformTitle != null && r.reformTitle!.isNotEmpty)
-          .map((r) => r.reformTitle!)
-          .toSet()
-          .toList();
+      final map = <String, AnalysisResult>{};
+      final titles = <String>[];
+      for (final r in history) {
+        if (r.isReformable == true && r.reformTitle != null && r.reformTitle!.isNotEmpty) {
+          if (!map.containsKey(r.reformTitle)) {
+            map[r.reformTitle!] = r;
+            titles.add(r.reformTitle!);
+          }
+        }
+      }
       if (mounted && titles.isNotEmpty) {
         setState(() {
+          _resultMap = map;
           _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.', ...titles];
         });
       }
@@ -844,7 +853,10 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                                 ),
                               );
                               if (result != null) {
-                                setState(() => selectedDesign = result);
+                                setState(() {
+                                  selectedDesign = result;
+                                  _selectedResult = _resultMap[result];
+                                });
                               }
                             },
                             child: Container(
@@ -942,6 +954,12 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                               shopId: shopId,
                               designTitle: selectedDesign == '솔루션 받은 리폼 디자인을 선택하세요.' ? '직접 요청' : selectedDesign,
                               requestContent: requestController.text.trim(),
+                              planId: _selectedResult?.planId,
+                              reformPlan: _selectedResult?.reformPlan,
+                              difficulty: _selectedResult?.difficulty,
+                              materials: _selectedResult?.materials,
+                              estimatedTime: _selectedResult?.estimatedTime,
+                              estimatedCost: _selectedResult?.estimatedCost,
                             );
                             if (!mounted) return;
                             Navigator.pop(context); // bottom sheet 닫기

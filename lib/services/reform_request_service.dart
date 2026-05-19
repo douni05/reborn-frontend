@@ -8,12 +8,24 @@ class ReformRequestService {
     required int shopId,
     required String designTitle,
     required String requestContent,
+    int? planId,
+    String? reformPlan,
+    String? difficulty,
+    String? materials,
+    String? estimatedTime,
+    String? estimatedCost,
   }) async {
     try {
       await _dio.post('/api/v1/reform-requests', data: {
         'shopId': shopId,
         'designTitle': designTitle,
         'requestContent': requestContent,
+        if (planId != null) 'planId': planId,
+        if (reformPlan != null) 'reformPlan': reformPlan,
+        if (difficulty != null) 'difficulty': difficulty,
+        if (materials != null) 'materials': materials,
+        if (estimatedTime != null) 'estimatedTime': estimatedTime,
+        if (estimatedCost != null) 'estimatedCost': estimatedCost,
       });
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;
