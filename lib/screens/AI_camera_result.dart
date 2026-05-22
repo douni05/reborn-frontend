@@ -39,7 +39,10 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
       _error = null;
     });
     try {
-      final result = await _service.analyze(label: widget.detectedLabel);
+      final result = await _service.analyze(
+        label: widget.detectedLabel,
+        imagePath: widget.imagePath.isNotEmpty ? widget.imagePath : null,
+      );
       setState(() {
         _result = result;
         _isLoading = false;
