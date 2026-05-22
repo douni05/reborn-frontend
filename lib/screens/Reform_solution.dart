@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/analysis_model.dart';
+import '../services/action_service.dart';
 import 'Expert_connect.dart';
 
-class ReformSolutionScreen extends StatelessWidget {
+class ReformSolutionScreen extends StatefulWidget {
   final AnalysisResult result;
 
   const ReformSolutionScreen({super.key, required this.result});
 
-  /// "step1: ...\nstep2: ..." 형태의 문자열을 단계별 리스트로 파싱
+  @override
+  State<ReformSolutionScreen> createState() => _ReformSolutionScreenState();
+}
+
+class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
+  final _actionService = ActionService();
+  final _picker = ImagePicker();
+
+  bool _isVerifying = false;
+  bool _isVerified = false;
+
   List<String> _parseSteps(String? plan) {
     if (plan == null || plan.trim().isEmpty) return [];
     return plan
@@ -17,9 +29,122 @@ class ReformSolutionScreen extends StatelessWidget {
         .toList();
   }
 
+  Future<void> _onReformComplete() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _isVerifying = true);
+    try {
+      final result = await _actionService.verifyReform(
+        imagePath: picked.path,
+        label: widget.result.label,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isVerifying = false;
+        if (result['isVerified'] == true) _isVerified = true;
+      });
+      _showVerifyResultDialog(
+        isVerified: result['isVerified'] == true,
+        message: result['message'] ?? '',
+        earnedXp: result['earnedXp'] ?? 0,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isVerifying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', ''),
+              style: const TextStyle(fontFamily: 'RebornFont')),
+          backgroundColor: const Color(0xFF5C3D2E),
+        ),
+      );
+    }
+  }
+
+  void _showVerifyResultDialog({
+    required bool isVerified,
+    required String message,
+    required int earnedXp,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAED),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(isVerified ? '🎉' : '📸',
+                  style: const TextStyle(fontSize: 48)),
+              const SizedBox(height: 12),
+              Text(
+                isVerified ? '리폼 완료 인증 성공!' : '인증 실패',
+                style: TextStyle(
+                    fontFamily: 'RebornFont',
+                    fontSize: 22,
+                    color: isVerified
+                        ? const Color(0xFF1F402C)
+                        : const Color(0xFF5C3D2E)),
+              ),
+              if (isVerified) ...[
+                const SizedBox(height: 8),
+                Text('+$earnedXp XP 획득',
+                    style: const TextStyle(
+                        fontFamily: 'RebornFont',
+                        fontSize: 18,
+                        color: Color(0xFF5C8A76),
+                        fontWeight: FontWeight.bold)),
+              ],
+              const SizedBox(height: 8),
+              Text(message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontFamily: 'RebornFont',
+                      fontSize: 13,
+                      color: Color(0xFF6E8B64),
+                      height: 1.5)),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    if (isVerified) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isVerified
+                        ? const Color(0xFF5C8A76)
+                        : const Color(0xFF87A676),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(isVerified ? '확인' : '다시 시도',
+                      style: const TextStyle(
+                          fontFamily: 'RebornFont', fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final steps = _parseSteps(result.reformPlan);
+    final steps = _parseSteps(widget.result.reformPlan);
 
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
@@ -79,16 +204,18 @@ class ReformSolutionScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
-                                  _row('재질', result.materialType),
-                                  if (result.conditionGrade != null) ...[
+                                  _row('재질', widget.result.materialType),
+                                  if (widget.result.conditionGrade != null) ...[
                                     const SizedBox(height: 8),
-                                    _row('상태 등급', _conditionLabel(result.conditionGrade!)),
+                                    _row('상태 등급',
+                                        _conditionLabel(widget.result.conditionGrade!)),
                                   ],
                                   const SizedBox(height: 8),
                                   _row('업사이클링 여부', '가능 👍'),
-                                  if (result.difficulty != null) ...[
+                                  if (widget.result.difficulty != null) ...[
                                     const SizedBox(height: 8),
-                                    _row('난이도', _difficultyLabel(result.difficulty!)),
+                                    _row('난이도',
+                                        _difficultyLabel(widget.result.difficulty!)),
                                   ],
                                 ],
                               ),
@@ -97,20 +224,20 @@ class ReformSolutionScreen extends StatelessWidget {
 
                             // 2. 리폼 아이디어 카드
                             _infoCard(
-                              title: result.reformTitle ?? '리폼 아이디어',
+                              title: widget.result.reformTitle ?? '리폼 아이디어',
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
-                                  if (result.materials != null)
-                                    _row('필요한 재료', result.materials!),
-                                  if (result.estimatedTime != null) ...[
+                                  if (widget.result.materials != null)
+                                    _row('필요한 재료', widget.result.materials!),
+                                  if (widget.result.estimatedTime != null) ...[
                                     const SizedBox(height: 8),
-                                    _row('예상 소요 시간', result.estimatedTime!),
+                                    _row('예상 소요 시간', widget.result.estimatedTime!),
                                   ],
-                                  if (result.estimatedCost != null) ...[
+                                  if (widget.result.estimatedCost != null) ...[
                                     const SizedBox(height: 8),
-                                    _row('예상 비용', result.estimatedCost!),
+                                    _row('예상 비용', widget.result.estimatedCost!),
                                   ],
                                 ],
                               ),
@@ -118,11 +245,61 @@ class ReformSolutionScreen extends StatelessWidget {
                             const SizedBox(height: 14),
 
                             // 3. 단계별 가이드 카드
-                            if (steps.isNotEmpty)
-                              _guideCard(steps),
+                            if (steps.isNotEmpty) _guideCard(steps),
                             const SizedBox(height: 20),
 
-                            // 전문가에게 도움받기
+                            // 리폼 완료 인증 버튼
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: _isVerified ? null : _onReformComplete,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isVerified
+                                      ? const Color(0xFFB0C4B1)
+                                      : const Color(0xFF87A676),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    side: BorderSide(
+                                        color: _isVerified
+                                            ? const Color(0xFF9BB09C)
+                                            : const Color(0xFF5C8A55),
+                                        width: 1),
+                                  ),
+                                ),
+                                child: _isVerifying
+                                    ? const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 20, height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2, color: Colors.white),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text('Gemini가 검증 중...',
+                                              style: TextStyle(
+                                                  fontFamily: 'RebornFont',
+                                                  fontSize: 16,
+                                                  color: Colors.white)),
+                                        ],
+                                      )
+                                    : Text(
+                                        _isVerified
+                                            ? '🏆 리폼 인증 완료'
+                                            : '📸 리폼 완료 인증하기 (+100 XP)',
+                                        style: const TextStyle(
+                                            fontFamily: 'RebornFont',
+                                            fontSize: 16,
+                                            color: Colors.white)),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 전문가에게 도움받기 버튼
                             SizedBox(
                               width: double.infinity,
                               height: 54,
@@ -207,9 +384,9 @@ class ReformSolutionScreen extends StatelessWidget {
           ...steps.asMap().entries.map((e) {
             final idx = e.key;
             final step = e.value;
-            // "step1:" 같은 접두어 제거
             final cleaned = step
-                .replaceFirst(RegExp(r'^step\s*\d+\s*:\s*', caseSensitive: false), '')
+                .replaceFirst(
+                    RegExp(r'^step\s*\d+\s*:\s*', caseSensitive: false), '')
                 .trim();
             return Padding(
               padding: EdgeInsets.only(bottom: idx < steps.length - 1 ? 10 : 0),
@@ -235,8 +412,7 @@ class ReformSolutionScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(cleaned,
                           style: const TextStyle(fontFamily: 'RebornFont',
-                              fontSize: 14, color: Color(0xFF1F402C),
-                              height: 1.4)),
+                              fontSize: 14, color: Color(0xFF1F402C), height: 1.4)),
                     ),
                   ),
                 ],

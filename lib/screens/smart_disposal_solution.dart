@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import '../models/analysis_model.dart';
+import '../services/action_service.dart';
 
-class SmartDisposalSolutionScreen extends StatelessWidget {
+class SmartDisposalSolutionScreen extends StatefulWidget {
   final AnalysisResult result;
 
   const SmartDisposalSolutionScreen({super.key, required this.result});
 
-  /// "1. ...\n2. ..." 또는 "step1: ..." 형태의 배출 방법을 줄 단위로 파싱
+  @override
+  State<SmartDisposalSolutionScreen> createState() => _SmartDisposalSolutionScreenState();
+}
+
+class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScreen> {
+  final _actionService = ActionService();
+  bool _isCompleting = false;
+  bool _isCompleted = false;
+
   List<String> _parseDisposalSteps(String? method) {
     if (method == null || method.trim().isEmpty) return [];
     return method
@@ -16,10 +25,89 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
         .toList();
   }
 
+  Future<void> _onDisposalComplete() async {
+    if (_isCompleting || _isCompleted) return;
+    setState(() => _isCompleting = true);
+    try {
+      final result = await _actionService.completeDisposal();
+      final earned = result['earnedXp'] ?? 50;
+      if (!mounted) return;
+      setState(() {
+        _isCompleted = true;
+        _isCompleting = false;
+      });
+      _showXpDialog(earned);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isCompleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', ''),
+              style: const TextStyle(fontFamily: 'RebornFont')),
+          backgroundColor: const Color(0xFF5C3D2E),
+        ),
+      );
+    }
+  }
+
+  void _showXpDialog(int earned) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAED),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('✅', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 12),
+              const Text('배출 완료!',
+                  style: TextStyle(fontFamily: 'RebornFont', fontSize: 22,
+                      color: Color(0xFF1F402C))),
+              const SizedBox(height: 8),
+              Text('+$earned XP 획득',
+                  style: const TextStyle(fontFamily: 'RebornFont', fontSize: 18,
+                      color: Color(0xFF5C8A76), fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              const Text('환경을 위한 올바른 실천이에요!',
+                  style: TextStyle(fontFamily: 'RebornFont', fontSize: 13,
+                      color: Color(0xFF6E8B64))),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // dialog
+                    Navigator.pop(context); // screen
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5C8A76),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('확인',
+                      style: TextStyle(fontFamily: 'RebornFont', fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final steps = _parseDisposalSteps(result.disposalMethod);
-    final icon = result.disposalIcon ?? '🗑️';
+    final steps = _parseDisposalSteps(widget.result.disposalMethod);
+    final icon = widget.result.disposalIcon ?? '🗑️';
 
     return Scaffold(
       backgroundColor: const Color(0xFFD9EACD),
@@ -72,37 +160,31 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 28, 16, 24),
                         child: Column(
                           children: [
-                            // 1. 분석 결과 카드
                             _sectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      Text(icon,
-                                          style: const TextStyle(fontSize: 28)),
+                                      Text(icon, style: const TextStyle(fontSize: 28)),
                                       const SizedBox(width: 10),
                                       const Text('분석 결과',
-                                          style: TextStyle(
-                                              fontFamily: 'RebornFont',
-                                              fontSize: 22,
-                                              color: Color(0xFF1F402C))),
+                                          style: TextStyle(fontFamily: 'RebornFont',
+                                              fontSize: 22, color: Color(0xFF1F402C))),
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  _row('재질', result.materialType),
-                                  if (result.conditionGrade != null) ...[
+                                  _row('재질', widget.result.materialType),
+                                  if (widget.result.conditionGrade != null) ...[
                                     const SizedBox(height: 8),
-                                    _row('상태 등급', _conditionLabel(result.conditionGrade!)),
+                                    _row('상태 등급', _conditionLabel(widget.result.conditionGrade!)),
                                   ],
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
                                       const Text('업사이클링 여부 : ',
-                                          style: TextStyle(
-                                              fontFamily: 'RebornFont',
-                                              fontSize: 15,
-                                              color: Color(0xFF6E8B64))),
+                                          style: TextStyle(fontFamily: 'RebornFont',
+                                              fontSize: 15, color: Color(0xFF6E8B64))),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 3),
@@ -111,10 +193,8 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: const Text('어려워요 😢',
-                                            style: TextStyle(
-                                                fontFamily: 'RebornFont',
-                                                fontSize: 13,
-                                                color: Color(0xFFB03030))),
+                                            style: TextStyle(fontFamily: 'RebornFont',
+                                                fontSize: 13, color: Color(0xFFB03030))),
                                       ),
                                     ],
                                   ),
@@ -122,8 +202,6 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 14),
-
-                            // 2. 배출 방법 카드
                             _sectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,8 +214,7 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                                     const Text(
                                       '해당 재질의 분리배출 방법을 확인 후 배출해주세요.',
                                       style: TextStyle(fontFamily: 'RebornFont',
-                                          fontSize: 14, color: Color(0xFF1F402C),
-                                          height: 1.5),
+                                          fontSize: 14, color: Color(0xFF1F402C), height: 1.5),
                                     )
                                   else
                                     ...steps.asMap().entries.map((e) {
@@ -145,8 +222,7 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                                         padding: EdgeInsets.only(
                                             bottom: e.key < steps.length - 1 ? 10 : 0),
                                         child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Container(
                                               width: 24,
@@ -183,27 +259,36 @@ class SmartDisposalSolutionScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 20),
-
-                            // 스마트 배출 확인 버튼
                             SizedBox(
                               width: double.infinity,
                               height: 54,
                               child: ElevatedButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: _isCompleted ? null : _onDisposalComplete,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF5C8A76),
+                                  backgroundColor: _isCompleted
+                                      ? const Color(0xFFB0C4B1)
+                                      : const Color(0xFF5C8A76),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shadowColor: Colors.transparent,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
-                                    side: const BorderSide(
-                                        color: Color(0xFF3E6B58), width: 1),
+                                    side: BorderSide(
+                                        color: _isCompleted
+                                            ? const Color(0xFF9BB09C)
+                                            : const Color(0xFF3E6B58),
+                                        width: 1),
                                   ),
                                 ),
-                                child: const Text('✅ 배출 완료',
-                                    style: TextStyle(fontFamily: 'RebornFont',
-                                        fontSize: 20, color: Colors.white)),
+                                child: _isCompleting
+                                    ? const SizedBox(
+                                        width: 22, height: 22,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2, color: Colors.white))
+                                    : Text(
+                                        _isCompleted ? '✅ 배출 완료됨' : '✅ 배출 완료',
+                                        style: const TextStyle(fontFamily: 'RebornFont',
+                                            fontSize: 20, color: Colors.white)),
                               ),
                             ),
                           ],

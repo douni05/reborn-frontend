@@ -1,5 +1,6 @@
 class AnalysisResult {
   final int? analysisId;
+  final String label;
   final String materialType;
   final String? conditionGrade;
   final bool? isReformable;
@@ -22,6 +23,7 @@ class AnalysisResult {
 
   AnalysisResult({
     this.analysisId,
+    this.label = '',
     required this.materialType,
     this.conditionGrade,
     this.isReformable,
@@ -40,6 +42,7 @@ class AnalysisResult {
   factory AnalysisResult.fromJson(Map<String, dynamic> json) {
     return AnalysisResult(
       analysisId: json['analysisId'] as int?,
+      label: json['label'] as String? ?? '',
       materialType: json['materialType'] as String? ?? '알 수 없음',
       conditionGrade: json['conditionGrade'] as String?,
       isReformable: json['isReformable'] as bool?,
