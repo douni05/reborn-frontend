@@ -1,5 +1,6 @@
 class AnalysisResult {
   final int? analysisId;
+  final String label;
   final String materialType;
   final String? conditionGrade;
   final bool? isReformable;
@@ -17,8 +18,12 @@ class AnalysisResult {
   final String? disposalIcon;
   final String? disposalMethod;
 
+  // 히스토리 표시용
+  final String? createdAt;
+
   AnalysisResult({
     this.analysisId,
+    this.label = '',
     required this.materialType,
     this.conditionGrade,
     this.isReformable,
@@ -31,11 +36,13 @@ class AnalysisResult {
     this.estimatedCost,
     this.disposalIcon,
     this.disposalMethod,
+    this.createdAt,
   });
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) {
     return AnalysisResult(
       analysisId: json['analysisId'] as int?,
+      label: json['label'] as String? ?? '',
       materialType: json['materialType'] as String? ?? '알 수 없음',
       conditionGrade: json['conditionGrade'] as String?,
       isReformable: json['isReformable'] as bool?,
@@ -48,6 +55,7 @@ class AnalysisResult {
       estimatedCost: json['estimatedCost'] as String?,
       disposalIcon: json['disposalIcon'] as String?,
       disposalMethod: json['disposalMethod'] as String?,
+      createdAt: json['createdAt'] as String?,
     );
   }
 }

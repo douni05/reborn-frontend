@@ -298,6 +298,23 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
     );
   }
 
+  Widget _solutionRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label  ',
+              style: const TextStyle(fontFamily: 'RebornFont', fontSize: 12, color: Color(0xFF6E7B6E))),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontFamily: 'RebornFont', fontSize: 12, color: Color(0xFF1F402C))),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _actionBtn({required String label, required bool filled, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -328,6 +345,11 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
     final nickname = req['requesterNickname'] ?? '사용자';
     final designTitle = req['designTitle'] ?? '';
     final requestContent = req['requestContent'] ?? '';
+    final reformPlan = req['reformPlan'] as String?;
+    final difficulty = req['difficulty'] as String?;
+    final materials = req['materials'] as String?;
+    final estimatedTime = req['estimatedTime'] as String?;
+    final estimatedCost = req['estimatedCost'] as String?;
 
     showDialog(
       context: context,
@@ -337,11 +359,15 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 12),
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.8,
+          ),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAED),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -372,6 +398,50 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
                   ),
                   child: Text(designTitle,
                       style: const TextStyle(fontFamily: 'RebornFont', fontSize: 14, color: Color(0xFF1F402C))),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (reformPlan != null) ...[
+                const Text('리폼 솔루션',
+                    style: TextStyle(fontFamily: 'RebornFont', fontSize: 16, color: Color(0xFF1F402C))),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F7EC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF87A676), width: 1),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (difficulty != null)
+                        _solutionRow('난이도', difficulty),
+                      if (estimatedTime != null)
+                        _solutionRow('소요 시간', estimatedTime),
+                      if (estimatedCost != null)
+                        _solutionRow('예상 비용', estimatedCost),
+                      if (materials != null) ...[
+                        const SizedBox(height: 4),
+                        _solutionRow('필요 재료', materials),
+                      ],
+                      const SizedBox(height: 8),
+                      const Text('제작 방법',
+                          style: TextStyle(fontFamily: 'RebornFont', fontSize: 13, color: Color(0xFF1F402C))),
+                      const SizedBox(height: 4),
+                      ...reformPlan.split('\n')
+                          .map((s) => s.trim())
+                          .where((s) => s.isNotEmpty)
+                          .map((step) => Padding(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: Text(step,
+                                    style: const TextStyle(
+                                        fontFamily: 'RebornFont', fontSize: 12,
+                                        color: Color(0xFF4A6A4A), height: 1.5)),
+                              )),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -428,6 +498,7 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
                 ),
             ],
           ),
+          ), // SingleChildScrollView
         ),
       ),
     );

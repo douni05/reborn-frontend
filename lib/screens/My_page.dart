@@ -4,35 +4,13 @@ import '../core/user_session.dart';
 import '../models/member_model.dart';
 import '../services/member_service.dart';
 import '../services/expert_service.dart';
-import '../widgets/bottom_nav_bar.dart';
+import '../core/constants/level_constants.dart';
 import 'Login.dart';
-import 'Reform_history.dart';
 import 'Expert_register1.dart';
 import 'Expert_edit.dart';
 import 'Expert_dashboard.dart';
 import 'My_requests.dart';
 
-String _getTitleEmoji(String title) {
-  switch (title) {
-    case '주니어 리포머':   return '♻️';
-    case '프로 환경러':     return '🌿';
-    case '에코 마스터':     return '🌍';
-    case '지구 수호자':     return '🏆';
-    case '맥가이버':        return '⚒️';
-    case '패션 아이콘':     return '🏆';
-    case '공방 단골손님':   return '🤝';
-    case '분리배출의 신':   return '📍';
-    default:               return '🌱';
-  }
-}
-
-const List<int> _levelThresholds = [
-  0, 50, 110, 180, 260, 360, 470, 590, 720, 870,
-  1000, 1150, 1350, 1500, 1700, 1950, 2150, 2350, 2550, 2750,
-  2950, 3150, 3350, 3550, 3750, 3950, 4150, 4350, 4500, 5000,
-  5600, 5800, 6000, 6200, 6400, 6600, 6800, 7000, 7200, 7400,
-  7600, 7800, 8000, 8200, 8400, 8600, 8800, 9000, 9200, 10000,
-];
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -70,9 +48,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
         _nickname = profile.nickname;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+      debugPrint('[MyPage] 프로필 로드 실패: $e');
     }
   }
 
@@ -95,28 +74,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _expertLoading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _expertLoading = false);
+      debugPrint('[MyPage] 전문가 정보 로드 실패: $e');
     }
   }
 
   double _xpProgress() {
-    final level = (_profile?.currentLevel ?? 1) - 1;
-    final totalXp = _profile?.totalXp ?? 0;
-    if (level >= _levelThresholds.length - 1) return 1.0;
-    final current = _levelThresholds[level];
-    final next = _levelThresholds[level + 1];
-    return ((totalXp - current) / (next - current)).clamp(0.0, 1.0);
+    return calcXpProgress(_profile?.totalXp ?? 0, _profile?.currentLevel ?? 1);
   }
 
   String _xpLabel() {
-    final level = (_profile?.currentLevel ?? 1) - 1;
-    final totalXp = _profile?.totalXp ?? 0;
-    if (level >= _levelThresholds.length - 1) return '$totalXp / MAX';
-    final current = _levelThresholds[level];
-    final next = _levelThresholds[level + 1];
-    return '${totalXp - current} / ${next - current}';
+    return calcXpLabel(_profile?.totalXp ?? 0, _profile?.currentLevel ?? 1);
   }
 
   void _showNicknameEditDialog() {
@@ -283,15 +253,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final level = _profile?.currentLevel ?? 1;
     final reformCount = _profile?.totalReformCount ?? 0;
     final disposalCount = _profile?.totalDisposalCount ?? 0;
+    final unlockedTitles = _profile?.unlockedTitles ?? [];
 
     final allTitles = [
-      {'icon': '🌱', 'name': '새싹 지구 지킴이', 'condition': 'Lv.1', 'unlocked': true},
+      {'icon': '🌱', 'name': '새싹 지구 지킴이', 'condition': 'Lv.1',     'unlocked': true},
       {'icon': '♻️', 'name': '주니어 리포머',    'condition': 'Lv.6',     'unlocked': level >= 6},
       {'icon': '🌿', 'name': '프로 환경러',       'condition': 'Lv.16',    'unlocked': level >= 16},
       {'icon': '🌍', 'name': '에코 마스터',       'condition': 'Lv.31',    'unlocked': level >= 31},
       {'icon': '🏆', 'name': '지구 수호자',       'condition': 'Lv.50',    'unlocked': level >= 50},
       {'icon': '⚒️', 'name': '맥가이버',          'condition': '리폼 5회', 'unlocked': reformCount >= 5},
       {'icon': '🏆', 'name': '패션 아이콘',       'condition': '리폼 10회','unlocked': reformCount >= 10},
+      {'icon': '🤝', 'name': '공방 단골손님',     'condition': '전문가 연결 3회', 'unlocked': unlockedTitles.contains('공방 단골손님')},
       {'icon': '📍', 'name': '분리배출의 신',     'condition': '처리 5회', 'unlocked': disposalCount >= 5},
     ];
 
@@ -336,9 +308,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
                         return GestureDetector(
                           onTap: unlocked
-                              ? () {
+                              ? () async {
                                   setState(() => _selectedTitle = name);
                                   Navigator.pop(context);
+                                  try {
+                                    await _memberService.updateTitle(name);
+                                  } catch (e) {
+                                    debugPrint('[MyPage] 칭호 변경 실패: $e');
+                                  }
                                 }
                               : null,
                           child: Container(
@@ -449,9 +426,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   setDialogState(() => isWithdrawing = true);
                                   try {
                                     await _memberService.withdraw();
-                                    AuthStorage().token = null;
-                                    AuthStorage().userId = null;
-                                    AuthStorage().nickname = null;
+                                    await AuthStorage().clear();
                                     UserSession.init(0, '');
                                     if (!mounted) return;
                                     Navigator.pop(dialogContext);
@@ -570,16 +545,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       _buildProfileCard(),
                       const SizedBox(height: 20),
                       _buildMenuButton(
-                        text: '나의 리폼 히스토리',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReformHistoryScreen(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildMenuButton(
                         text: '나의 요청 현황',
                         onTap: () => Navigator.push(
                           context,
@@ -607,7 +572,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),
@@ -650,7 +614,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 Row(
                   children: [
                     Text(
-                      _getTitleEmoji(title),
+                      getTitleEmoji(title),
                       style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(width: 6),
@@ -707,6 +671,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE6E8E9), height: 1),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatItem('♻️', '리폼', _profile?.totalReformCount ?? 0),
+                    _buildStatDivider(),
+                    _buildStatItem('🗑️', '분리배출', _profile?.totalDisposalCount ?? 0),
+                    _buildStatDivider(),
+                    _buildStatItem('🤝', '전문가 연결', _profile?.expertConnectionCount ?? 0),
+                  ],
                 ),
               ],
             ),
@@ -1082,6 +1059,42 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
+  Widget _buildStatItem(String emoji, String label, int count) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(height: 4),
+          Text(
+            '$count회',
+            style: const TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 17,
+              color: Color(0xFF1F402C),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'RebornFont',
+              fontSize: 11,
+              color: Color(0xFF8A8A8A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatDivider() {
+    return Container(
+      width: 1,
+      height: 40,
+      color: const Color(0xFFE6E8E9),
+    );
+  }
+
   Widget _buildMenuButton({required String text, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -1104,11 +1117,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  void _logout() {
-    AuthStorage().token = null;
-    AuthStorage().userId = null;
-    AuthStorage().nickname = null;
+  Future<void> _logout() async {
+    await AuthStorage().clear();
     UserSession.init(0, '');
+    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),

@@ -29,8 +29,11 @@ import com.google.mlkit.vision.label.ImageLabeling
 import java.io.IOException
 
 /** Custom InputImage Classifier Demo.  */
-class LabelDetectorProcessor(context: Context, options: ImageLabelerOptionsBase) :
-  VisionProcessorBase<List<ImageLabel>>(context) {
+class LabelDetectorProcessor(
+  private val context: Context,
+  options: ImageLabelerOptionsBase,
+  var resultCallback: ((label: String, confidence: Float) -> Unit)? = null
+) : VisionProcessorBase<List<ImageLabel>>(context) {
 
   private val imageLabeler: ImageLabeler = ImageLabeling.getClient(options)
   private val labelsList: List<String> by lazy {
@@ -59,8 +62,16 @@ class LabelDetectorProcessor(context: Context, options: ImageLabelerOptionsBase)
   }
 
   override fun onSuccess(labels: List<ImageLabel>, graphicOverlay: GraphicOverlay) {
-    graphicOverlay.add(LabelGraphic(graphicOverlay, labels, labelsList))
+    graphicOverlay.add(LabelGraphic(graphicOverlay, labels, labelsList, context))
     logExtrasForTesting(labels)
+    if (labels.isNotEmpty()) {
+      val first = labels.first()
+      // 모델에 라벨 이름이 내장되지 않은 경우 labels.txt에서 인덱스로 찾기
+      val labelText = first.text.ifEmpty {
+        labelsList.getOrNull(first.index) ?: "Unknown"
+      }
+      resultCallback?.invoke(labelText, first.confidence)
+    }
   }
 
   override fun onFailure(e: Exception) {

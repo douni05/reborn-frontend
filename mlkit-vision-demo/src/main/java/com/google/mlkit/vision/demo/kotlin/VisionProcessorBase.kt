@@ -45,7 +45,6 @@ import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.InferenceInfoGraphic
 import com.google.mlkit.vision.demo.ScopedExecutor
 import com.google.mlkit.vision.demo.VisionImageProcessor
-import com.google.mlkit.vision.demo.preference.PreferenceUtils
 import java.lang.Math.max
 import java.lang.Math.min
 import java.nio.ByteBuffer
@@ -166,9 +165,7 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
     val frameStartMs = SystemClock.elapsedRealtime()
     // If live viewport is on (that is the underneath surface view takes care of the camera preview
     // drawing), skip the unnecessary bitmap creation that used for the manual preview drawing.
-    val bitmap =
-      if (PreferenceUtils.isCameraLiveViewportEnabled(graphicOverlay.context)) null
-      else BitmapUtils.getBitmap(data, frameMetadata)
+    val bitmap = BitmapUtils.getBitmap(data, frameMetadata)
 
     if (isMlImageEnabled(graphicOverlay.context)) {
       val mlImage =
@@ -212,10 +209,7 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
     if (isShutdown) {
       return
     }
-    var bitmap: Bitmap? = null
-    if (!PreferenceUtils.isCameraLiveViewportEnabled(graphicOverlay.context)) {
-      bitmap = BitmapUtils.getBitmap(image)
-    }
+    val bitmap: Bitmap? = BitmapUtils.getBitmap(image)
 
     if (isMlImageEnabled(graphicOverlay.context)) {
       val mlImage =
@@ -342,16 +336,14 @@ abstract class VisionProcessorBase<T>(context: Context) : VisionImageProcessor {
             graphicOverlay.add(CameraImageGraphic(graphicOverlay, originalCameraImage))
           }
           this@VisionProcessorBase.onSuccess(results, graphicOverlay)
-          if (!PreferenceUtils.shouldHideDetectionInfo(graphicOverlay.context)) {
-            graphicOverlay.add(
-              InferenceInfoGraphic(
-                graphicOverlay,
-                currentFrameLatencyMs,
-                currentDetectorLatencyMs,
-                if (shouldShowFps) framesPerSecond else null
-              )
+          graphicOverlay.add(
+            InferenceInfoGraphic(
+              graphicOverlay,
+              currentFrameLatencyMs,
+              currentDetectorLatencyMs,
+              if (shouldShowFps) framesPerSecond else null
             )
-          }
+          )
           graphicOverlay.postInvalidate()
         }
       )

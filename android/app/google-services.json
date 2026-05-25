@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "570295039332",
+    "project_id": "reborn-2c50e",
+    "storage_bucket": "reborn-2c50e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:570295039332:android:7988eee778e78baf33b671",
+        "android_client_info": {
+          "package_name": "com.google.mlkit.vision.demo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp0QEgVfd1jbbKQgHbhB_sYBCvH1bM_nM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

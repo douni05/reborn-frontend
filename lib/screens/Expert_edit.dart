@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/expert_service.dart';
@@ -64,6 +65,27 @@ class _ExpertEditScreenState extends State<ExpertEditScreen> {
     }
   }
 
+  Future<(double?, double?)> _geocodeAddress(String address) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {'q': address, 'format': 'json', 'limit': 1, 'countrycodes': 'kr'},
+        options: Options(
+          headers: {'User-Agent': 'RebornApp/1.0'},
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      if (response.data is List && (response.data as List).isNotEmpty) {
+        final item = response.data[0] as Map<String, dynamic>;
+        final lat = double.tryParse(item['lat']?.toString() ?? '');
+        final lon = double.tryParse(item['lon']?.toString() ?? '');
+        return (lat, lon);
+      }
+    } catch (_) {}
+    return (null, null);
+  }
+
   Future<void> _save() async {
     if (_shopNameController.text.trim().isEmpty ||
         _phoneController.text.trim().isEmpty ||
@@ -88,16 +110,29 @@ class _ExpertEditScreenState extends State<ExpertEditScreen> {
         imageUrl = await _expertService.uploadImage(_newImageFile!);
       }
 
+      // 주소가 바뀌었으면 위경도 재계산
+      final originalAddress = widget.expert['address'] as String? ?? '';
+      final newAddress = _addressController.text.trim();
+      double? lat = (widget.expert['latitude'] as num?)?.toDouble();
+      double? lon = (widget.expert['longitude'] as num?)?.toDouble();
+      if (newAddress != originalAddress || lat == null) {
+        final (newLat, newLon) = await _geocodeAddress(newAddress);
+        lat = newLat;
+        lon = newLon;
+      }
+
       await _expertService.updateExpert(
         shopName: _shopNameController.text.trim(),
         businessNumber: _businessNumberController.text.trim(),
         ownerName: _ownerNameController.text.trim(),
         phone: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
+        address: newAddress,
         detailAddress: _detailAddressController.text.trim(),
         category: _selectedCategory,
         introduction: _introductionController.text.trim(),
         imageUrl: imageUrl,
+        latitude: lat,
+        longitude: lon,
       );
 
       if (!mounted) return;
@@ -452,3 +487,4 @@ class _ExpertEditScreenState extends State<ExpertEditScreen> {
     );
   }
 }
+

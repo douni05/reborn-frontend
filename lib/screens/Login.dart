@@ -1,9 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_naver_login/interface/types/naver_login_result.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'Signup.dart';
-import 'Main_page.dart';
+import '../widgets/app_shell.dart';
 import '../services/member_service.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
@@ -30,9 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loginWithKakao() async {
     try {
       bool isInstalled = await isKakaoTalkInstalled();
-      OAuthToken token = isInstalled
-          ? await UserApi.instance.loginWithKakaoTalk()
-          : await UserApi.instance.loginWithKakaoAccount();
+      await (isInstalled
+          ? UserApi.instance.loginWithKakaoTalk()
+          : UserApi.instance.loginWithKakaoAccount());
 
       final user = await UserApi.instance.me();
 
@@ -42,14 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final exists = await _memberService.checkEmailExists(email);
       if (exists) {
-        // 이미 가입된 회원 → 바로 메인으로
+        // 이미 가입된 회원 → join으로 토큰 받고 메인으로
+        await _memberService.join(email: email, nickname: nickname, role: 'USER');
         if (mounted) _goToMain(context);
       } else {
         // 미가입 회원 → 회원가입 페이지로 (닉네임 입력하게)
         if (mounted) _goToSignup(context, email: email);
       }
     } catch (error) {
-      print('카카오 로그인 실패: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('카카오 로그인 실패: $error')),
@@ -61,19 +60,14 @@ class _LoginScreenState extends State<LoginScreen> {
   // 네이버 로그인 구현
   Future<void> _loginWithNaver() async {
     try {
-      print('네이버 로그인 시작');
       final result = await FlutterNaverLogin.logIn();
-      print('네이버 로그인 결과: ${result.status}');
-      print('네이버 에러 메시지: ${result.errorMessage}');
       if (result.status == NaverLoginStatus.loggedIn) {
-        print('네이버 이메일: ${result.account?.email}');
         final email = result.account?.email ?? '';
         if (email.isNotEmpty) {
           await _handleSocialLogin(email);
         }
       }
     } catch (error) {
-      print('네이버 로그인 실패: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('네이버 로그인 실패: $error')),
@@ -106,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _goToMain(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const MainPageScreen()),
+      MaterialPageRoute(builder: (context) => const AppShell()),
       (route) => false,
     );
   }

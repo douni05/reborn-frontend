@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
 import 'AI_camera_result.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -65,9 +66,11 @@ class _CameraScreenState extends State<CameraScreen> {
       final labels = await _labeler.processImage(inputImage);
       if (labels.isNotEmpty && mounted) {
         setState(() {
-          _liveLabel = labels.first.label; // 실시간으로 인식된 라벨 표시
+          _liveLabel = labels.first.label;
         });
       }
+    } catch (_) {
+      // 에뮬레이터 등 호환되지 않는 카메라 포맷 무시
     } finally {
       _isProcessing = false;
     }
@@ -93,6 +96,61 @@ class _CameraScreenState extends State<CameraScreen> {
         bytesPerRow: image.planes[0].bytesPerRow,
       ),
     );
+  }
+
+  // 갤러리에서 이미지 선택 후 분석 (에뮬레이터 테스트용)
+  Future<void> _pickFromGallery() async {
+    if (_isAnalyzing) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    setState(() => _isAnalyzing = true);
+
+    try {
+      await _controller?.stopImageStream();
+
+      final inputImage = InputImage.fromFilePath(picked.path);
+      final labels = await _labeler.processImage(inputImage);
+
+      if (!mounted) return;
+
+      if (labels.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('물체를 인식하지 못했어요. 다른 사진으로 시도해주세요')),
+        );
+        await _controller?.startImageStream(_processFrame);
+        setState(() => _isAnalyzing = false);
+        return;
+      }
+
+      final bestLabel = labels.first.label;
+      final confidence = labels.first.confidence;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AICameraResultScreen(
+            detectedLabel: bestLabel,
+            confidence: confidence,
+            imagePath: picked.path,
+          ),
+        ),
+      ).then((_) {
+        if (mounted) {
+          _controller?.startImageStream(_processFrame);
+          setState(() => _isAnalyzing = false);
+        }
+      });
+    } catch (e) {
+      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e')),
+        );
+      }
+    }
   }
 
   // 촬영 버튼 누를 때 — 사진 찍고 최종 분석
@@ -222,32 +280,52 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
             ),
 
-            // 하단 촬영 버튼
+            // 하단 버튼 영역 (갤러리 + 촬영)
             Positioned(
               bottom: 40,
               left: 0,
               right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: _isAnalyzing ? null : _capture,
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: _isAnalyzing
-                          ? Colors.grey
-                          : const Color(0xFF87A676),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 갤러리 버튼
+                  GestureDetector(
+                    onTap: _isAnalyzing ? null : _pickFromGallery,
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(Icons.photo_library,
+                          color: Colors.white, size: 24),
                     ),
-                    child: _isAnalyzing
-                        ? const Center(
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.recycling,
-                        color: Colors.white, size: 32),
                   ),
-                ),
+                  const SizedBox(width: 32),
+                  // 촬영 버튼
+                  GestureDetector(
+                    onTap: _isAnalyzing ? null : _capture,
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: _isAnalyzing
+                            ? Colors.grey
+                            : const Color(0xFF87A676),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: _isAnalyzing
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.recycling,
+                              color: Colors.white, size: 32),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

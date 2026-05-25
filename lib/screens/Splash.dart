@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../core/storage/auth_storage.dart';
 import 'Login.dart';
+import '../widgets/app_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,13 +15,21 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
-    });
+    _checkLoginAndNavigate();
+  }
+
+  Future<void> _checkLoginAndNavigate() async {
+    // 저장된 토큰 불러오기
+    final isLoggedIn = await AuthStorage().load();
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => isLoggedIn ? const AppShell() : const LoginScreen(),
+      ),
+    );
   }
 
   @override

@@ -23,12 +23,16 @@ import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.GraphicOverlay.Graphic
 import com.google.mlkit.vision.label.ImageLabel
 import java.util.Locale
+import android.content.Context
+import androidx.core.content.res.ResourcesCompat
+import com.google.mlkit.vision.demo.R
 
 /** Graphic instance for rendering a label within an associated graphic overlay view.  */
 class LabelGraphic(
   private val overlay: GraphicOverlay,
   private val labels: List<ImageLabel>,
-  private val labelsList: List<String> = emptyList()
+  private val labelsList: List<String> = emptyList(),
+  private val context: Context
 ) : Graphic(overlay) {
   private val textPaint: Paint = Paint()
   private val labelPaint: Paint
@@ -36,8 +40,10 @@ class LabelGraphic(
   init {
     textPaint.color = Color.WHITE
     textPaint.textSize = TEXT_SIZE
+    val typeface = ResourcesCompat.getFont(context, R.font.ownglyph) // ← 추가
+    textPaint.typeface = typeface
     labelPaint = Paint()
-    labelPaint.color = Color.BLACK
+    labelPaint.color = Color.parseColor("#DAF3D1")
     labelPaint.style = Paint.Style.FILL
     labelPaint.alpha = 200
   }
@@ -52,31 +58,34 @@ class LabelGraphic(
         labelsList[label.index]
       } else {
         label.text
+      }.split(" ").drop(1).joinToString(" ").ifEmpty {
+        labelsList.getOrNull(label.index) ?: label.text
       }
+
       val line1Width = textPaint.measureText(text)
       val line2Width =
         textPaint.measureText(
           String.format(
             Locale.US,
             LABEL_FORMAT,
-            label.confidence * 100,
-            label.index
+            label.confidence * 100
           )
         )
 
       maxWidth = Math.max(maxWidth, Math.max(line1Width, line2Width))
     }
 
-    val x = Math.max(0f, overlay.width / 2.0f - maxWidth / 2.0f)
-    var y = Math.max(200f, overlay.height / 2.0f - totalHeight / 2.0f)
+    val padding = 20f
+    val x = overlay.width - maxWidth - padding * 2
+    var y = overlay.height - totalHeight - padding * 4
 
     if (!labels.isEmpty()) {
       val padding = 20f
       canvas.drawRect(
         x - padding,
-        y - padding,
+        y - padding * 0.5f,
         x + maxWidth + padding,
-        y + totalHeight + padding,
+        y + totalHeight + padding * 0.5f,
         labelPaint
       )
     }
@@ -86,27 +95,22 @@ class LabelGraphic(
         break
       }
       val text = if (labelsList.isNotEmpty() && label.index < labelsList.size) {
-        labelsList[label.index]
+        labelsList[label.index].split(" ").drop(1).joinToString(" ")
       } else {
         label.text
       }
-      canvas.drawText(text, x, y + TEXT_SIZE, textPaint)
+      canvas.drawText(text, x, y + TEXT_SIZE * 0.8f, textPaint)
       y += TEXT_SIZE
       canvas.drawText(
-        String.format(
-          Locale.US,
-          LABEL_FORMAT,
-          label.confidence * 100,
-          label.index
-        ),
-        x, y + TEXT_SIZE, textPaint
+        String.format(Locale.US, LABEL_FORMAT, label.confidence * 100),
+        x, y + TEXT_SIZE * 0.8f, textPaint
       )
       y += TEXT_SIZE
     }
   }
 
   companion object {
-    private const val TEXT_SIZE = 70.0f
-    private const val LABEL_FORMAT = "%.2f%% confidence (index: %d)"
+    private const val TEXT_SIZE = 60.0f
+    private const val LABEL_FORMAT = "%.2f%%"
   }
 }

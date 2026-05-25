@@ -24,6 +24,7 @@ class MemberService {
       storage.nickname = result.nickname;
       storage.totalXp = result.totalXp;
       storage.currentLevel = result.currentLevel;
+      await storage.save(); // 기기에 영구 저장
 
       return result;
     } on DioException catch (e) {
@@ -41,6 +42,18 @@ class MemberService {
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] as String?;
       throw Exception(msg ?? '닉네임 변경 중 오류가 발생했습니다');
+    }
+  }
+
+  Future<void> updateTitle(String titleName) async {
+    try {
+      await _dio.patch(
+        '/api/v1/members/title',
+        data: {'titleName': titleName},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? '칭호 변경 중 오류가 발생했습니다');
     }
   }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../services/expert_service.dart';
 import '../services/reform_request_service.dart';
+import '../services/analysis_service.dart';
+import '../models/analysis_model.dart';
 
 class ExpertConnectScreen extends StatefulWidget {
   const ExpertConnectScreen({super.key});
@@ -260,34 +261,33 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
                                           ),
                                         )
                                       : _filtered.isEmpty
-                                          ? const Center(
-                                              child: Text(
-                                                '등록된 전문가가 없어요',
-                                                style: TextStyle(
-                                                  fontFamily: 'RebornFont',
-                                                  fontSize: 15,
-                                                  color: Color(0xFF6E7B6E),
+                                              ? const Center(
+                                                  child: Text(
+                                                    '등록된 전문가가 없어요',
+                                                    style: TextStyle(
+                                                      fontFamily: 'RebornFont',
+                                                      fontSize: 15,
+                                                      color: Color(0xFF6E7B6E),
+                                                    ),
+                                                  ),
+                                                )
+                                              : RefreshIndicator(
+                                                  color: const Color(0xFF87A676),
+                                                  onRefresh: _loadExperts,
+                                                  child: ListView.separated(
+                                                    itemCount: _filtered.length,
+                                                    separatorBuilder: (_, __) =>
+                                                        const SizedBox(height: 14),
+                                                    padding: const EdgeInsets.only(bottom: 20),
+                                                    itemBuilder: (context, index) {
+                                                      final expert = _filtered[index];
+                                                      return _WorkshopCard(
+                                                        expert: expert,
+                                                        onInquiryTap: () => _onInquiryTap(expert),
+                                                      );
+                                                    },
+                                                  ),
                                                 ),
-                                              ),
-                                            )
-                                          : RefreshIndicator(
-                                              color: const Color(0xFF87A676),
-                                              onRefresh: _loadExperts,
-                                              child: ListView.separated(
-                                                itemCount: _filtered.length,
-                                                separatorBuilder: (_, __) =>
-                                                    const SizedBox(height: 14),
-                                                padding:
-                                                    const EdgeInsets.only(bottom: 20),
-                                                itemBuilder: (context, index) {
-                                                  final expert = _filtered[index];
-                                                  return _WorkshopCard(
-                                                    expert: expert,
-                                                    onInquiryTap: () => _onInquiryTap(expert),
-                                                  );
-                                                },
-                                              ),
-                                            ),
                             ),
                           ],
                         ),
@@ -297,7 +297,6 @@ class _ExpertConnectScreenState extends State<ExpertConnectScreen> {
                 ],
               ),
             ),
-            const BottomNavBar(selectedIndex: 3),
           ],
         ),
       ),
@@ -331,8 +330,6 @@ class _WorkshopCard extends StatelessWidget {
     final category = expert['category'] ?? '';
     final address = expert['address'] ?? '';
     final introduction = expert['introduction'] ?? '';
-    final avgRating = (expert['averageRating'] as num?)?.toDouble() ?? 0.0;
-    final reviewCount = (expert['reviewCount'] as num?)?.toInt() ?? 0;
 
     return Container(
       width: double.infinity,
@@ -404,19 +401,7 @@ class _WorkshopCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (avgRating > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 14, color: Color(0xFFF5A623)),
-                      const SizedBox(width: 3),
-                      Text(
-                        '${avgRating.toStringAsFixed(1)} ($reviewCount개)',
-                        style: const TextStyle(fontFamily: 'RebornFont', fontSize: 12, color: Color(0xFF6E7B6E)),
-                      ),
-                    ],
-                  ),
-                ],
+
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -509,6 +494,37 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
   String selectedDesign = '솔루션 받은 리폼 디자인을 선택하세요.';
   final TextEditingController requestController = TextEditingController();
   bool _isSending = false;
+  List<String> _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.'];
+  Map<String, AnalysisResult> _resultMap = {};
+  AnalysisResult? _selectedResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDesignOptions();
+  }
+
+  Future<void> _loadDesignOptions() async {
+    try {
+      final history = await AnalysisService().getHistory();
+      final map = <String, AnalysisResult>{};
+      final titles = <String>[];
+      for (final r in history) {
+        if (r.isReformable == true && r.reformTitle != null && r.reformTitle!.isNotEmpty) {
+          if (!map.containsKey(r.reformTitle)) {
+            map[r.reformTitle!] = r;
+            titles.add(r.reformTitle!);
+          }
+        }
+      }
+      if (mounted && titles.isNotEmpty) {
+        setState(() {
+          _resultMap = map;
+          _designOptions = ['솔루션 받은 리폼 디자인을 선택하세요.', ...titles];
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -658,10 +674,14 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                                 backgroundColor: Colors.transparent,
                                 builder: (context) => _DesignSelectSheet(
                                   selectedValue: selectedDesign,
+                                  options: _designOptions,
                                 ),
                               );
                               if (result != null) {
-                                setState(() => selectedDesign = result);
+                                setState(() {
+                                  selectedDesign = result;
+                                  _selectedResult = _resultMap[result];
+                                });
                               }
                             },
                             child: Container(
@@ -759,6 +779,12 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
                               shopId: shopId,
                               designTitle: selectedDesign == '솔루션 받은 리폼 디자인을 선택하세요.' ? '직접 요청' : selectedDesign,
                               requestContent: requestController.text.trim(),
+                              planId: _selectedResult?.planId,
+                              reformPlan: _selectedResult?.reformPlan,
+                              difficulty: _selectedResult?.difficulty,
+                              materials: _selectedResult?.materials,
+                              estimatedTime: _selectedResult?.estimatedTime,
+                              estimatedCost: _selectedResult?.estimatedCost,
                             );
                             if (!mounted) return;
                             Navigator.pop(context); // bottom sheet 닫기
@@ -827,15 +853,11 @@ class _InquiryBottomSheetState extends State<_InquiryBottomSheet> {
 
 class _DesignSelectSheet extends StatelessWidget {
   final String selectedValue;
-  const _DesignSelectSheet({required this.selectedValue});
+  final List<String> options;
+  const _DesignSelectSheet({required this.selectedValue, required this.options});
 
   @override
   Widget build(BuildContext context) {
-    final options = [
-      '솔루션 받은 리폼 디자인을 선택하세요.',
-      '청바지로 나만의 개성있는 가방 만들기',
-      '병뚜껑으로 나만의 귀여운 키링 만들기',
-    ];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),

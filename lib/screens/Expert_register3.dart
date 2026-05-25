@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../services/expert_service.dart';
 import 'Expert_connect.dart';
 
@@ -12,6 +11,8 @@ class ExpertRegister3Screen extends StatefulWidget {
   final String address;
   final String detailAddress;
   final File? imageFile;
+  final double? latitude;
+  final double? longitude;
 
   const ExpertRegister3Screen({
     super.key,
@@ -22,6 +23,8 @@ class ExpertRegister3Screen extends StatefulWidget {
     required this.address,
     required this.detailAddress,
     this.imageFile,
+    this.latitude,
+    this.longitude,
   });
 
   @override
@@ -81,6 +84,8 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
         category: _selectedCategory,
         introduction: _introductionController.text.trim(),
         imageUrl: imageUrl,
+        latitude: widget.latitude,
+        longitude: widget.longitude,
       );
 
       if (!mounted) return;
@@ -403,7 +408,6 @@ class _ExpertRegister3ScreenState extends State<ExpertRegister3Screen> {
                 ),
               ),
             ),
-            const BottomNavBar(selectedIndex: 4),
           ],
         ),
       ),

@@ -1,26 +1,47 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
+import '../models/analysis_model.dart';
+import '../services/analysis_service.dart';
 import 'camera_screen.dart';
 import 'Reform_solution.dart';
 import 'smart_disposal_solution.dart';
 
-class ReformHistoryScreen extends StatelessWidget {
+class ReformHistoryScreen extends StatefulWidget {
   const ReformHistoryScreen({super.key});
 
-  static const _dummyItems = [
-    {
-      'title': '청바지 가방 만들기',
-      'date': '2025.04.20',
-      'status': '완료',
-      'type': 'reform',
-    },
-    {
-      'title': '티셔츠 쿠션 리폼',
-      'date': '2025.03.15',
-      'status': '진행중',
-      'type': 'disposal',
-    },
-  ];
+  @override
+  State<ReformHistoryScreen> createState() => _ReformHistoryScreenState();
+}
+
+class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
+  final AnalysisService _service = AnalysisService();
+  List<AnalysisResult> _history = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final data = await _service.getHistory();
+      setState(() {
+        _history = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,19 +69,17 @@ class ReformHistoryScreen extends StatelessWidget {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const CameraScreen(),
-                              ),
+                                  builder: (_) => const CameraScreen()),
                             );
+                            _loadHistory(); // 카메라에서 돌아오면 히스토리 갱신
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: const Color(0xFF87A676),
                               borderRadius: BorderRadius.circular(20),
@@ -101,74 +120,115 @@ class ReformHistoryScreen extends StatelessWidget {
                           topRight: Radius.circular(34),
                         ),
                       ),
-                      child: _dummyItems.isEmpty
-                          ? const Center(
-                              child: Text(
-                                '아직 리폼 내역이 없어요!\n새로만들기를 눌러 시작해보세요.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'RebornFont',
-                                  fontSize: 15,
-                                  color: Color(0xFF6E7B6E),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(14, 18, 14, 20),
-                              itemCount: _dummyItems.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) {
-                                final item = _dummyItems[index];
-                                return _ReformHistoryItem(
-                                  title: item['title']!,
-                                  date: item['date']!,
-                                  status: item['status']!,
-                                  type: item['type']!,
-                                );
-                              },
-                            ),
+                      child: _buildContent(),
                     ),
                   ),
                 ],
               ),
             ),
-            const BottomNavBar(selectedIndex: 1),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF87A676)),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('😥',
+                style: TextStyle(fontSize: 40)),
+            const SizedBox(height: 12),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontFamily: 'RebornFont',
+                    fontSize: 14,
+                    color: Color(0xFF6E7B6E))),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _loadHistory,
+              child: const Text('다시 시도',
+                  style: TextStyle(
+                      fontFamily: 'RebornFont', color: Color(0xFF87A676))),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_history.isEmpty) {
+      return const Center(
+        child: Text(
+          '아직 분석 내역이 없어요!\n새로만들기를 눌러 시작해보세요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'RebornFont',
+            fontSize: 15,
+            color: Color(0xFF6E7B6E),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF87A676),
+      onRefresh: _loadHistory,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(14, 18, 14, 20),
+        itemCount: _history.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final item = _history[index];
+          return _ReformHistoryItem(
+            result: item,
+            onTap: () {
+              if (item.isReformable == true) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ReformSolutionScreen(result: item)),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          SmartDisposalSolutionScreen(result: item)),
+                );
+              }
+            },
+          );
+        },
       ),
     );
   }
 }
 
 class _ReformHistoryItem extends StatelessWidget {
-  final String title;
-  final String date;
-  final String status;
-  final String type;
+  final AnalysisResult result;
+  final VoidCallback onTap;
 
-  const _ReformHistoryItem({
-    required this.title,
-    required this.date,
-    required this.status,
-    required this.type,
-  });
-
-  void _onTap(BuildContext context) {
-    final page = type == 'reform'
-        ? const ReformSolutionScreen()
-        : const SmartDisposalSolutionScreen();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
-  }
+  const _ReformHistoryItem({required this.result, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isDone = status == '완료';
+    final isReform = result.isReformable == true;
+    final title = result.reformTitle?.isNotEmpty == true
+        ? result.reformTitle!
+        : result.materialType;
+    final date = result.createdAt ?? '';
+
     return GestureDetector(
-      onTap: () => _onTap(context),
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         decoration: BoxDecoration(
@@ -178,10 +238,21 @@ class _ReformHistoryItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.checkroom_outlined,
-              size: 36,
-              color: Color(0xFF87A676),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isReform
+                    ? const Color(0xFFDFF0D8)
+                    : const Color(0xFFFFE8CC),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  isReform ? '♻️' : '🗑️',
+                  style: const TextStyle(fontSize: 22),
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -195,33 +266,37 @@ class _ReformHistoryItem extends StatelessWidget {
                       fontSize: 16,
                       color: Color(0xFF1F402C),
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date,
-                    style: const TextStyle(
-                      fontFamily: 'RebornFont',
-                      fontSize: 12,
-                      color: Color(0xFF6E7B6E),
+                  if (date.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        fontFamily: 'RebornFont',
+                        fontSize: 12,
+                        color: Color(0xFF6E7B6E),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isDone
+                color: isReform
                     ? const Color(0xFFD9EACD)
-                    : const Color(0xFFFFE0B2),
+                    : const Color(0xFFFFE0CC),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                status,
+                isReform ? '리폼' : '배출',
                 style: TextStyle(
                   fontFamily: 'RebornFont',
                   fontSize: 12,
-                  color: isDone
+                  color: isReform
                       ? const Color(0xFF1F402C)
                       : const Color(0xFF8D4E00),
                 ),
