@@ -7,8 +7,7 @@ import '../../screens/Login.dart';
 class ApiClient {
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    // defaultValue: 'http://10.0.2.2:8080',
-    defaultValue: 'http://192.168.55.129:8080',
+    defaultValue: 'http://10.0.2.2:8080',
   );
 
   static final ApiClient _instance = ApiClient._internal();
