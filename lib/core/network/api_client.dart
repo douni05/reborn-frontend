@@ -19,7 +19,7 @@ class ApiClient {
     BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
       contentType: 'application/json',
     ),
   )..interceptors.add(

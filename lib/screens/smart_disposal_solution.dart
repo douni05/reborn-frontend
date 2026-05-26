@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/analysis_model.dart';
 import '../services/action_service.dart';
+import '../widgets/app_shell.dart';
 
 class SmartDisposalSolutionScreen extends StatefulWidget {
   final AnalysisResult result;
+  final bool fromCamera;
 
-  const SmartDisposalSolutionScreen({super.key, required this.result});
+  const SmartDisposalSolutionScreen({
+    super.key,
+    required this.result,
+    this.fromCamera = false,
+  });
 
   @override
   State<SmartDisposalSolutionScreen> createState() => _SmartDisposalSolutionScreenState();
@@ -14,7 +20,13 @@ class SmartDisposalSolutionScreen extends StatefulWidget {
 class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScreen> {
   final _actionService = ActionService();
   bool _isCompleting = false;
-  bool _isCompleted = false;
+  late bool _isCompleted;
+
+  @override
+  void initState() {
+    super.initState();
+    _isCompleted = widget.result.isDisposalCompleted;
+  }
 
   List<String> _parseDisposalSteps(String? method) {
     if (method == null || method.trim().isEmpty) return [];
@@ -29,7 +41,9 @@ class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScree
     if (_isCompleting || _isCompleted) return;
     setState(() => _isCompleting = true);
     try {
-      final result = await _actionService.completeDisposal();
+      final result = await _actionService.completeDisposal(
+        analysisId: widget.result.analysisId,
+      );
       final earned = result['earnedXp'] ?? 50;
       if (!mounted) return;
       setState(() {
@@ -83,11 +97,10 @@ class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScree
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // dialog
-                    Navigator.pop(context); // screen
+                    Navigator.pop(context); // dialog만 닫기
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5C8A76),
+                    backgroundColor: const Color(0xFF6E8B64),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -185,17 +198,28 @@ class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScree
                                       const Text('업사이클링 여부 : ',
                                           style: TextStyle(fontFamily: 'RebornFont',
                                               fontSize: 15, color: Color(0xFF6E8B64))),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFE0E0),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Text('어려워요 😢',
-                                            style: TextStyle(fontFamily: 'RebornFont',
-                                                fontSize: 13, color: Color(0xFFB03030))),
-                                      ),
+                                      Builder(builder: (context) {
+                                        final reformable = widget.result.isReformable == true;
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: reformable
+                                                ? const Color(0xFFDFF0D8)
+                                                : const Color(0xFFFFE0E0),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            reformable ? '가능 👍' : '어려워요 😢',
+                                            style: TextStyle(
+                                                fontFamily: 'RebornFont',
+                                                fontSize: 13,
+                                                color: reformable
+                                                    ? const Color(0xFF3E5C45)
+                                                    : const Color(0xFFB03030)),
+                                          ),
+                                        );
+                                      }),
                                     ],
                                   ),
                                 ],
@@ -267,7 +291,7 @@ class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScree
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _isCompleted
                                       ? const Color(0xFFB0C4B1)
-                                      : const Color(0xFF5C8A76),
+                                      : const Color(0xFF87A676),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shadowColor: Colors.transparent,
@@ -276,21 +300,67 @@ class _SmartDisposalSolutionScreenState extends State<SmartDisposalSolutionScree
                                     side: BorderSide(
                                         color: _isCompleted
                                             ? const Color(0xFF9BB09C)
-                                            : const Color(0xFF3E6B58),
+                                            : const Color(0xFF5C8A55),
                                         width: 1),
                                   ),
                                 ),
                                 child: _isCompleting
-                                    ? const SizedBox(
-                                        width: 22, height: 22,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2, color: Colors.white))
+                                    ? const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 20, height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2, color: Colors.white),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text('처리 중...',
+                                              style: TextStyle(
+                                                  fontFamily: 'RebornFont',
+                                                  fontSize: 16,
+                                                  color: Colors.white)),
+                                        ],
+                                      )
                                     : Text(
-                                        _isCompleted ? '✅ 배출 완료됨' : '✅ 배출 완료',
-                                        style: const TextStyle(fontFamily: 'RebornFont',
-                                            fontSize: 20, color: Colors.white)),
+                                        _isCompleted ? '✅ 배출 완료됨' : '🗑️ 배출 완료 확인 (+50 XP)',
+                                        style: TextStyle(
+                                            fontFamily: 'RebornFont',
+                                            fontSize: 16,
+                                            color: _isCompleted
+                                                ? const Color(0xFF1F402C)
+                                                : Colors.white)),
                               ),
                             ),
+                            if (widget.fromCamera) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => const AppShell()),
+                                      (route) => false,
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF6E8B64),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '다음에 하기',
+                                    style: TextStyle(
+                                        fontFamily: 'RebornFont',
+                                        fontSize: 16,
+                                        color: Color(0xFF6E8B64)),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

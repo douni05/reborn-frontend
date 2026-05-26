@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/analysis_model.dart';
 import '../services/action_service.dart';
+import '../widgets/app_shell.dart';
 import 'Expert_connect.dart';
 
 class ReformSolutionScreen extends StatefulWidget {
   final AnalysisResult result;
+  final bool fromCamera;
 
-  const ReformSolutionScreen({super.key, required this.result});
+  const ReformSolutionScreen({
+    super.key,
+    required this.result,
+    this.fromCamera = false,
+  });
 
   @override
   State<ReformSolutionScreen> createState() => _ReformSolutionScreenState();
@@ -18,7 +24,13 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
   final _picker = ImagePicker();
 
   bool _isVerifying = false;
-  bool _isVerified = false;
+  late bool _isVerified;
+
+  @override
+  void initState() {
+    super.initState();
+    _isVerified = widget.result.isReformVerified;
+  }
 
   List<String> _parseSteps(String? plan) {
     if (plan == null || plan.trim().isEmpty) return [];
@@ -41,6 +53,7 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
       final result = await _actionService.verifyReform(
         imagePath: picked.path,
         label: widget.result.label,
+        analysisId: widget.result.analysisId,
       );
       if (!mounted) return;
       setState(() {
@@ -118,8 +131,7 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context);
-                    if (isVerified) Navigator.pop(context);
+                    Navigator.pop(context); // dialog만 닫기
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isVerified
@@ -325,6 +337,36 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
                                         fontSize: 18, color: Colors.white)),
                               ),
                             ),
+                            if (widget.fromCamera) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => const AppShell()),
+                                      (route) => false,
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF6E8B64),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '다음에 하기',
+                                    style: TextStyle(
+                                        fontFamily: 'RebornFont',
+                                        fontSize: 16,
+                                        color: Color(0xFF6E8B64)),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
