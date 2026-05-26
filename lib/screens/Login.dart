@@ -6,6 +6,7 @@ import '../widgets/app_shell.dart';
 import '../services/member_service.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -43,6 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (exists) {
         // 이미 가입된 회원 → join으로 토큰 받고 메인으로
         await _memberService.join(email: email, nickname: nickname, role: 'USER');
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) await _memberService.updateFcmToken(fcmToken);
         if (mounted) _goToMain(context);
       } else {
         // 미가입 회원 → 회원가입 페이지로 (닉네임 입력하게)
@@ -83,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (exists) {
         // 이미 가입된 회원이면 바로 로그인 처리
         await _memberService.join(email: email, nickname: '', role: 'USER');
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) await _memberService.updateFcmToken(fcmToken);
         if (mounted) _goToMain(context);
       } else {
         // 미가입 회원이면 회원가입 페이지로
@@ -177,11 +182,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (!context.mounted) return;
                             Navigator.pop(ctx);
                             if (exists) {
-                              await _memberService.join(
-                                email: email,
-                                nickname: '',
-                                role: 'USER',
-                              );
+                              await _memberService.join(email: email, nickname: '', role: 'USER');
+                              String? fcmToken = await FirebaseMessaging.instance.getToken();
+                              if (fcmToken != null) await _memberService.updateFcmToken(fcmToken);
                               if (context.mounted) _goToMain(context);
                             } else {
                               _goToSignup(context, email: email);

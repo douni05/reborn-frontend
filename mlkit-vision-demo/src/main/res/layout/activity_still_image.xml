@@ -31,10 +31,12 @@
   <LinearLayout
       android:id="@+id/control"
       android:layout_width="match_parent"
-      android:layout_height="90dp"
+      android:layout_height="wrap_content"
       android:background="#DAF3D1"
       android:orientation="vertical"
       android:gravity="center"
+      android:paddingTop="16dp"
+      android:paddingBottom="60dp"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent">
 

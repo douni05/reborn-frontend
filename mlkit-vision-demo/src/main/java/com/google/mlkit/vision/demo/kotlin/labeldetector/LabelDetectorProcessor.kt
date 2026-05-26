@@ -30,7 +30,7 @@ import java.io.IOException
 
 /** Custom InputImage Classifier Demo.  */
 class LabelDetectorProcessor(
-  context: Context,
+  private val context: Context,
   options: ImageLabelerOptionsBase,
   var resultCallback: ((label: String, confidence: Float) -> Unit)? = null
 ) : VisionProcessorBase<List<ImageLabel>>(context) {
@@ -62,7 +62,7 @@ class LabelDetectorProcessor(
   }
 
   override fun onSuccess(labels: List<ImageLabel>, graphicOverlay: GraphicOverlay) {
-    graphicOverlay.add(LabelGraphic(graphicOverlay, labels, labelsList))
+    graphicOverlay.add(LabelGraphic(graphicOverlay, labels, labelsList, context))
     logExtrasForTesting(labels)
     if (labels.isNotEmpty()) {
       val first = labels.first()

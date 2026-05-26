@@ -66,6 +66,18 @@ class MemberService {
     }
   }
 
+  Future<void> updateFcmToken(String fcmToken) async {
+    try {
+      await _dio.patch(
+        '/api/v1/members/fcm-token',
+        data: {'fcmToken': fcmToken},
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? 'FCM 토큰 저장 실패');
+    }
+  }
+
   Future<bool> checkEmailExists(String email) async {
     try {
       await _dio.get('/api/v1/members/check-email', queryParameters: {'email': email});
