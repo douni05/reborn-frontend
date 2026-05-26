@@ -55,23 +55,22 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
     }
   }
 
-  void _goToSolution() {
-    final result = _result!;
-    if (result.isReformable == true) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ReformSolutionScreen(result: result),
-        ),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SmartDisposalSolutionScreen(result: result),
-        ),
-      );
-    }
+  void _goToReform() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReformSolutionScreen(result: _result!),
+      ),
+    );
+  }
+
+  void _goToDisposal() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SmartDisposalSolutionScreen(result: _result!),
+      ),
+    );
   }
 
   @override
@@ -287,34 +286,71 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
           const SizedBox(height: 24),
 
           // 솔루션 버튼
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: _goToSolution,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isReformable
-                    ? const Color(0xFF87A676)
-                    : const Color(0xFF5C8A76),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: isReformable
-                        ? const Color(0xFF6E8B64)
-                        : const Color(0xFF3E6B58),
-                    width: 1,
+          if (isReformable) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _goToReform,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF87A676),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: Color(0xFF6E8B64), width: 1),
                   ),
                 ),
-              ),
-              child: Text(
-                isReformable ? '♻️ 리폼 솔루션 보기' : '🗑️ 배출 가이드 보기',
-                style: const TextStyle(
-                    fontFamily: 'RebornFont', fontSize: 18, color: Colors.white),
+                child: const Text(
+                  '♻️ 리폼 솔루션 보기',
+                  style: TextStyle(
+                      fontFamily: 'RebornFont', fontSize: 18, color: Colors.white),
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: OutlinedButton(
+                onPressed: _goToDisposal,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF3E5C45),
+                  side: const BorderSide(color: Color(0xFF3E5C45), width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  '🗑️ 배출 가이드 보기',
+                  style: TextStyle(
+                      fontFamily: 'RebornFont', fontSize: 18,
+                      color: Color(0xFF3E5C45)),
+                ),
+              ),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _goToDisposal,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5C8A76),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: Color(0xFF3E6B58), width: 1),
+                  ),
+                ),
+                child: const Text(
+                  '🗑️ 배출 가이드 보기',
+                  style: TextStyle(
+                      fontFamily: 'RebornFont', fontSize: 18, color: Colors.white),
+                ),
+              ),
+            ),
         ],
       ),
     );
