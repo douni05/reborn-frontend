@@ -59,7 +59,7 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ReformSolutionScreen(result: _result!),
+        builder: (_) => ReformSolutionScreen(result: _result!, fromCamera: true),
       ),
     );
   }
@@ -68,7 +68,7 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SmartDisposalSolutionScreen(result: _result!),
+        builder: (_) => SmartDisposalSolutionScreen(result: _result!, fromCamera: true),
       ),
     );
   }
@@ -315,6 +315,7 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
               child: OutlinedButton(
                 onPressed: _goToDisposal,
                 style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF3E5C45),
                   side: const BorderSide(color: Color(0xFF3E5C45), width: 1),
                   shape: RoundedRectangleBorder(
@@ -333,24 +334,24 @@ class _AICameraResultScreenState extends State<AICameraResultScreen> {
             SizedBox(
               width: double.infinity,
               height: 54,
-              child: ElevatedButton(
+              child: OutlinedButton(
                 onPressed: _goToDisposal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5C8A76),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF3E5C45),
+                  side: const BorderSide(color: Color(0xFF3E5C45), width: 1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
-                    side: const BorderSide(color: Color(0xFF3E6B58), width: 1),
                   ),
                 ),
                 child: const Text(
                   '🗑️ 배출 가이드 보기',
                   style: TextStyle(
-                      fontFamily: 'RebornFont', fontSize: 18, color: Colors.white),
+                      fontFamily: 'RebornFont', fontSize: 18,
+                      color: Color(0xFF3E5C45)),
                 ),
               ),
-            ),
+            )
         ],
       ),
     );

@@ -21,6 +21,10 @@ class AnalysisResult {
   // 히스토리 표시용
   final String? createdAt;
 
+  // 완료 여부
+  final bool isDisposalCompleted;
+  final bool isReformVerified;
+
   AnalysisResult({
     this.analysisId,
     this.label = '',
@@ -37,6 +41,8 @@ class AnalysisResult {
     this.disposalIcon,
     this.disposalMethod,
     this.createdAt,
+    this.isDisposalCompleted = false,
+    this.isReformVerified = false,
   });
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) {
@@ -56,6 +62,8 @@ class AnalysisResult {
       disposalIcon: json['disposalIcon'] as String?,
       disposalMethod: json['disposalMethod'] as String?,
       createdAt: json['createdAt'] as String?,
+      isDisposalCompleted: json['isDisposalCompleted'] as bool? ?? false,
+      isReformVerified: json['isReformVerified'] as bool? ?? false,
     );
   }
 }

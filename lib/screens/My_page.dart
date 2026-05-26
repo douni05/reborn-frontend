@@ -16,10 +16,10 @@ class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
 
   @override
-  State<MyPageScreen> createState() => _MyPageScreenState();
+  State<MyPageScreen> createState() => MyPageScreenState();
 }
 
-class _MyPageScreenState extends State<MyPageScreen> {
+class MyPageScreenState extends State<MyPageScreen> {
   final MemberService _memberService = MemberService();
   final ExpertService _expertService = ExpertService();
   MemberProfile? _profile;
@@ -37,6 +37,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _nickname = UserSession.nickname.isNotEmpty ? UserSession.nickname : '닉네임';
     _loadProfile();
     _loadExpertInfo();
+  }
+
+  void reload() {
+    _loadProfile();
   }
 
   Future<void> _loadProfile() async {

@@ -9,10 +9,10 @@ class ReformHistoryScreen extends StatefulWidget {
   const ReformHistoryScreen({super.key});
 
   @override
-  State<ReformHistoryScreen> createState() => _ReformHistoryScreenState();
+  State<ReformHistoryScreen> createState() => ReformHistoryScreenState();
 }
 
-class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
+class ReformHistoryScreenState extends State<ReformHistoryScreen> {
   final AnalysisService _service = AnalysisService();
   List<AnalysisResult> _history = [];
   bool _isLoading = true;
@@ -23,6 +23,8 @@ class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
     super.initState();
     _loadHistory();
   }
+
+  void reload() => _loadHistory();
 
   Future<void> _loadHistory() async {
     setState(() {
@@ -190,7 +192,7 @@ class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
           final item = _history[index];
           return _ReformHistoryItem(
             result: item,
-            onTap: () {
+            onTap: () async {
               if (item.isReformable == true) {
                 Navigator.push(
                   context,
@@ -198,11 +200,18 @@ class _ReformHistoryScreenState extends State<ReformHistoryScreen> {
                       builder: (_) => ReformSolutionScreen(result: item)),
                 );
               } else {
+                // 배출 아이템은 disposalMethod가 history에 없으므로 detail 조회
+                AnalysisResult detail = item;
+                if (item.analysisId != null) {
+                  try {
+                    detail = await _service.getDetail(item.analysisId!);
+                  } catch (_) {}
+                }
+                if (!context.mounted) return;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) =>
-                          SmartDisposalSolutionScreen(result: item)),
+                      builder: (_) => SmartDisposalSolutionScreen(result: detail)),
                 );
               }
             },
