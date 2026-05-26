@@ -15,6 +15,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int _selectedIndex;
+  final _mainPageKey = GlobalKey<MainPageScreenState>();
   final _reformHistoryKey = GlobalKey<ReformHistoryScreenState>();
   final _myPageKey = GlobalKey<MyPageScreenState>();
 
@@ -26,6 +27,9 @@ class _AppShellState extends State<AppShell> {
 
   void _onTabChanged(int index) {
     setState(() => _selectedIndex = index);
+    if (index == 0) {
+      _mainPageKey.currentState?.reload();
+    }
     if (index == 1) {
       _reformHistoryKey.currentState?.reload();
     }
@@ -40,7 +44,7 @@ class _AppShellState extends State<AppShell> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          const MainPageScreen(),
+          MainPageScreen(key: _mainPageKey),
           ReformHistoryScreen(key: _reformHistoryKey),
           const SizedBox.shrink(), // 인덱스 2: 가운데 버튼 (BottomNavBar에서 직접 처리)
           const ExpertConnectScreen(),

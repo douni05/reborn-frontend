@@ -107,7 +107,7 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
                     fontSize: 22,
                     color: isVerified
                         ? const Color(0xFF1F402C)
-                        : const Color(0xFF5C3D2E)),
+                        : const Color(0xFF1F402C)),
               ),
               if (isVerified) ...[
                 const SizedBox(height: 8),
@@ -115,7 +115,7 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
                     style: const TextStyle(
                         fontFamily: 'RebornFont',
                         fontSize: 18,
-                        color: Color(0xFF5C8A76),
+                        color: Color(0xFF6E8B64),
                         fontWeight: FontWeight.bold)),
               ],
               const SizedBox(height: 8),
@@ -135,7 +135,7 @@ class _ReformSolutionScreenState extends State<ReformSolutionScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isVerified
-                        ? const Color(0xFF5C8A76)
+                        ? const Color(0xFF87A676)
                         : const Color(0xFF87A676),
                     foregroundColor: Colors.white,
                     elevation: 0,

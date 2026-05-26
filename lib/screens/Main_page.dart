@@ -177,10 +177,10 @@ class MainPageScreen extends StatefulWidget {
   const MainPageScreen({super.key});
 
   @override
-  State<MainPageScreen> createState() => _MainPageScreenState();
+  State<MainPageScreen> createState() => MainPageScreenState();
 }
 
-class _MainPageScreenState extends State<MainPageScreen> {
+class MainPageScreenState extends State<MainPageScreen> {
   String? _tip;
 
   @override
@@ -188,6 +188,10 @@ class _MainPageScreenState extends State<MainPageScreen> {
     super.initState();
     _loadProfile();
     _loadTip();
+  }
+
+  void reload() {
+    _loadProfile();
   }
 
   Future<void> _loadProfile() async {
@@ -215,6 +219,14 @@ class _MainPageScreenState extends State<MainPageScreen> {
     }
   }
 
+  String _getCharacterImage(int level) {
+    if (level >= 50) return 'assets/images/ch_5.png';
+    if (level >= 31) return 'assets/images/ch_4.png';
+    if (level >= 16) return 'assets/images/ch_3.png';
+    if (level >= 6)  return 'assets/images/ch_2.png';
+    return 'assets/images/ch_1.png';
+  }
+
   @override
   Widget build(BuildContext context) {
     final storage = AuthStorage();
@@ -235,7 +247,14 @@ class _MainPageScreenState extends State<MainPageScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 20),
-              child: Image.asset('assets/icons/pot.png', width: 150),
+              child: SizedBox(
+                width: 160,
+                height: 160,
+                child: Image.asset(
+                  _getCharacterImage(currentLevel),
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             Expanded(

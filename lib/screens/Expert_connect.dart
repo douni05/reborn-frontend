@@ -858,43 +858,53 @@ class _DesignSelectSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       decoration: const BoxDecoration(
         color: Color(0xFFF8FAED),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: options.map((option) {
-          final isSelected = option == selectedValue;
-          return GestureDetector(
-            onTap: () => Navigator.pop(context, option),
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFCFE4C6)
-                    : const Color(0xFFF7F7F7),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: const Color(0xFF6E8B64), width: 1),
-              ),
-              child: Text(
-                option,
-                style: const TextStyle(
-                  fontFamily: 'RebornFont',
-                  fontSize: 15,
-                  color: Color(0xFF1F402C),
-                ),
-              ),
+        children: [
+          const SizedBox(height: 16),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+              itemCount: options.length,
+              itemBuilder: (context, index) {
+                final option = options[index];
+                final isSelected = option == selectedValue;
+                return GestureDetector(
+                  onTap: () => Navigator.pop(context, option),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFCFE4C6)
+                          : const Color(0xFFF7F7F7),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF6E8B64), width: 1),
+                    ),
+                    child: Text(
+                      option,
+                      style: const TextStyle(
+                        fontFamily: 'RebornFont',
+                        fontSize: 15,
+                        color: Color(0xFF1F402C),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        }).toList(),
+          ),
+        ],
       ),
     );
   }
